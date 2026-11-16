@@ -22,8 +22,12 @@ It costs about **$7/month**. Render has no free worker tier, and the free *web*
 tier sleeps — a sleeping worker finds you nothing, which is the whole failure
 this deployment exists to avoid.
 
-**Before you leave the Render dashboard, copy out `AUTH_SECRET` and
-`OPS_PASSWORD`.** Render generates them, and Vercel needs the same values.
+Generate the two shared secrets first and keep them somewhere you can paste
+from twice; both platforms need the identical values.
+
+```bash
+node -e "const c=require('crypto');console.log('AUTH_SECRET  =',c.randomBytes(32).toString('base64'));console.log('OPS_PASSWORD =',c.randomBytes(24).toString('base64'))"
+```
 
 ---
 

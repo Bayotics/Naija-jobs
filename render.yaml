@@ -56,14 +56,19 @@ services:
 
       # Required in production; the process refuses to boot without them.
       #
-      # `generateValue` makes Render invent these. Copy both into Vercel after
-      # the first deploy: a session issued by the dashboard is only valid if
-      # both halves sign with the same AUTH_SECRET, and two independently
-      # generated secrets fail in a way that looks like a login bug.
+      # Prompted for, not generated.
+      #
+      # Render can invent these with `generateValue`, and for a single-service
+      # deployment it should. Here the dashboard lives on Vercel and has to
+      # sign sessions with the *same* AUTH_SECRET: a value Render invented
+      # would have to be fished back out of its UI and retyped, and a mismatch
+      # produces a dashboard that accepts a login then rejects every request
+      # after it — which reads as a login bug and is not one. Generating the
+      # pair once and pasting it into both platforms removes that trap.
       - key: AUTH_SECRET
-        generateValue: true
+        sync: false
       - key: OPS_PASSWORD
-        generateValue: true
+        sync: false
 
       # Four concurrent tasks on a paid instance. The ceiling here is politeness
       # to the job boards rather than CPU — the domain rate limiter is what
