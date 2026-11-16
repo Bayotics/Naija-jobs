@@ -1,53 +1,97 @@
-# Job Intelligence
+# Naija Jobs
 
-**Why scroll job boards when a bot can do it and email you the good ones?**
+**Why refresh Jobberman at 2am when a bot can do it and email you the ones
+that actually fit?**
 
-This thing wakes up while you're asleep, goes out and reads job boards, throws
-away everything that isn't you, scores what's left against your actual profile,
-and drops the winners in your inbox with a reason attached.
+This thing works the Nigerian job boards while you sleep. It reads the
+listings, throws out everything that isn't your field, scores what's left
+against your real profile, and drops the good ones in your inbox with a reason
+attached.
 
 You wake up. You check your email. There are jobs there. That's the product.
 
-It's free. It'll stay free. I'm not selling this, I'm not building a startup on
-it, there's no waitlist and there's no "pro tier". I built it because job
-hunting is miserable and I'd rather write code than refresh LinkedIn.
+It's free. It stays free. I'm not selling this, there's no waitlist, there's no
+"pro tier". I built it because job hunting in Nigeria is a full-time job on its
+own, and I'd rather write code than refresh six tabs.
 
 If it lands you an interview, **give it a star**. That's the whole ask.
 
 ---
 
+## What it looks for
+
+Seven fields, and nothing outside them:
+
+- Administration / Secretarial / PA / Clerical / Office Assistant
+- Advertising / Branding / PR
+- Customer Service / Call Centre / Front Desk / Receptionist
+- Graduate Trainee / Fresh Graduate / Graduate Internship
+- Marketing / Sales / Business Development / Merchandiser / Financial Adviser
+- Research / Survey / Data Entry
+- Remote / Freelance / Work-from-home
+
+**Nigeria only.** Remote, hybrid, on-site — all fine, as long as it's here. No
+more "exciting opportunity in Munich" for someone sitting in Lagos.
+
+Salary isn't a gate. A job without a stated salary still reaches you, because
+half of them don't state one and you'd rather see it than not.
+
+---
+
 ## What it actually does
 
-- Pulls jobs from multiple boards on a schedule, no clicking, no tabs
-- Bins anything outside your field *before* it hits the database. You're a
-  backend dev, you'll never see "IGCSE Teacher — Chemistry"
-- Scores every job against your real profile: skills, seniority, salary,
-  location, visa, remote policy
-- Knows you can't take an on-site role in Munich if you're in Lagos, and won't
-  waste your time pretending otherwise
-- Emails you a digest with *why* each job matched, not just a percentage
+- Checks the boards **every hour**, no tabs, no clicking
+- Bins anything outside your fields *before* it touches the database — you're
+  applying for admin roles, you'll never see "Senior DevOps Engineer"
+- Scores each job on your real profile: titles, experience, location, work
+  arrangement
+- Flags the scams. "Pay ₦5,000 registration fee" is not a job offer, and it
+  knows that
+- Emails you a digest explaining *why* each one matched, not just a percentage
 - **Never applies for you.** No auto-submit, no bot messaging recruiters. It
-  prepares, you decide. Your name stays yours.
+  prepares, you decide. Your name stays yours
+
+---
+
+## Where the jobs come from
+
+**Jobberman** is the backbone — six category feeds, one per field, each on its
+own schedule so a broken one doesn't take the rest down. Every listing carries
+proper structured data: company, location, salary, date posted.
+
+**MyJobMag** runs alongside it for coverage Jobberman misses.
+
+**Indeed is in the code, switched off, with the reason written down.** It
+answers any honest crawler with a 403. Getting in would mean pretending to be
+Chrome or renting residential proxies, and this project doesn't do that. It's
+registered so the gap is visible instead of looking like something I forgot.
+
+**Hot Nigerian Jobs** is off too, for a duller reason: it timed out on every
+single run in testing. It's there, ready, waiting for someone to work out why
+it's so slow.
+
+Adding a source is a connector and a seed row. PRs very welcome.
 
 ---
 
 ## The money
 
-Full transparency, because "free and open source" usually still costs something
-somewhere:
+Full transparency, because "free and open source" usually still costs
+something somewhere:
 
 | What | Cost |
 |---|---|
-| Claude + OpenAI API keys | **~$10** total, and that's lasted me a while |
+| Claude + OpenAI API keys | **~$10** total, and that lasts a good while |
 | Neon Postgres | Free tier. Maybe **$5/month** after the trial |
+| Render worker (optional) | **$7/month** — only if you want it running without your laptop on |
 | Everything else | $0 |
 
-So **around $10 to start**, maybe $15 if you keep it running past the first
-month. (You most likely would not need to if you set your profile efficiently)
+So **about $10 to try it on your own machine**, around $12/month if you deploy
+it properly and leave it running.
 
 Use it properly — real profile, real preferences, actually apply to what it
-sends you, and you should have your next job inside a month. That's genuinely
-what I'm hoping happens for you. I'm rooting for you. Go get it.
+sends you — and you should have something inside a month. That's genuinely
+what I'm hoping happens for you. I'm rooting for you. Go and get it.
 
 ---
 
@@ -58,8 +102,8 @@ You need **Node 22+** and **pnpm 10+**. That's it.
 ### 1. Clone and install
 
 ```bash
-git clone https://github.com/Bayotics/Fully-automated-Job-Discovery-Platform.git
-cd Fully-automated-Job-Discovery-Platform
+git clone https://github.com/Bayotics/Naija-jobs.git
+cd Naija-jobs
 pnpm install
 ```
 
@@ -69,76 +113,78 @@ pnpm install
 cp .env.example .env
 ```
 
-Open `.env` and fill in the required bits. The short version:
+Open `.env` and fill in:
 
-- `DATABASE_URL` — free Postgres from [neon.tech](https://neon.tech), takes two minutes
-- `ANTHROPIC_API_KEY` and `AI_EMBEDDING_API_KEY` — the AI brains
+- `DATABASE_URL` — free Postgres from [neon.tech](https://neon.tech), two minutes
+- `ANTHROPIC_API_KEY` and `AI_EMBEDDING_API_KEY` — the brains
 - `RESEND_API_KEY`, `NOTIFICATION_FROM_EMAIL`, `NOTIFICATION_TO_EMAIL` — the email bit
 
-Leave `NOTIFICATION_DRY_RUN=true` for now. Nothing will send while it's true,
-which is what you want until you've seen what it picks.
+Leave `NOTIFICATION_DRY_RUN=true` for now. Nothing sends while it's true, which
+is what you want until you've seen what it picks.
 
 ### 3. Set up the database
 
 ```bash
-pnpm db:migrate
-pnpm db:seed
-pnpm bootstrap:search
+pnpm db:migrate && pnpm db:seed && pnpm bootstrap:search
 ```
 
-That last one builds your first search profile from your candidate profile so
-the system has something to look for on day one.
+Migration takes a couple of minutes against Neon. It hasn't hung, it's building
+indexes.
+
+That last command turns your profile into a search profile, so the system knows
+what to look for on day one.
 
 ### 4. Run it
 
 Two terminals:
 
 ```bash
-pnpm dev:worker    # the engine — finds, scores, emails
+pnpm dev:worker
 ```
 
 ```bash
-pnpm dev:web       # the dashboard — localhost:3000
+pnpm dev:web
 ```
 
-The worker is the one that matters. The dashboard is just so you can watch.
+The worker is the one that matters. The dashboard, at **localhost:3000**, is so
+you can watch it work.
 
 ### 5. Fill in your profile
 
-Open **localhost:3000** → **Candidate Profile**. Put in your real skills, real
-years, real preferences.
+**localhost:3000 → Candidate Profile.** Your real experience, your real
+preferences, the fields you actually want.
 
-Do not skip this. The seed data is a fake person and the system will score jobs
-against that fake person and you'll wonder why the matches are mid.
+Don't skip this. The seed data is a made-up person and the system will happily
+find jobs for *them*.
 
 ### 6. Turn on email
 
-Once you're happy with what's showing up in **Matches**, set
-`NOTIFICATION_DRY_RUN=false` and restart the worker.
-
-Check **Notification Settings** and set your timezone, unless you enjoy your
-morning digest arriving at 3pm.
+Once **Matches** looks right, set `NOTIFICATION_DRY_RUN=false` and restart the
+worker. Check **Notification Settings** and set your timezone — Africa/Lagos —
+unless you enjoy a 4am digest.
 
 ---
 
 ## Making it run without your laptop on
 
-A worker on your laptop stops working when you close your laptop. Rude, but
-fair.
+A worker on your laptop stops working when you shut your laptop. Rude, but
+fair. And it's the whole point: jobs get posted while you're asleep.
 
-Cheapest fix is [Railway](https://railway.app) — about $5/month:
+There's a `render.yaml` in the repo, so:
 
 1. Push to GitHub
-2. Railway → New Project → Deploy from GitHub repo
-3. Start command: `node --import tsx apps/worker/src/index.ts`
-4. Paste your `.env`, then change:
-   - `NODE_ENV=production`
-   - `NOTIFICATION_DRY_RUN=false`
-   - add `AUTH_SECRET` and `OPS_PASSWORD` (production insists — generate with
-     `openssl rand -base64 32`)
+2. [Render](https://render.com) → **New** → **Blueprint** → pick this repo
+3. Paste your keys when it asks (it prompts once per secret)
+4. Deploy
 
-Fly.io or any $5 VPS works too. There's a `Dockerfile` in the repo. Avoid
-Vercel for the worker — it has no always-on process, so there's nothing to run.
+It creates two services: the **worker**, which is the actual product, and the
+**dashboard**, which is optional. The worker is a background service, not a web
+one — Render puts free web services to sleep, and a sleeping worker finds you
+nothing. That's $7/month and it's the thing worth paying for. Drop the
+dashboard to the free tier if you want; it sleeping is fine.
+
+Any $5 VPS works too — there's a `Dockerfile`. Avoid Vercel for the worker: no
+always-on process, nothing to run.
 
 ---
 
@@ -148,23 +194,23 @@ I put this on **Neon** because it's Postgres, it's free to start, and it took
 two minutes. Nothing more principled than that.
 
 And honestly? **I'm not a big SQL guy.** I use it because it works and because
-pgvector makes the semantic search easy, not because I love writing joins.
+pgvector makes the semantic search easy, not because I enjoy writing joins.
 
 So if you'd rather rip it out, do it. Genuinely. The database sits behind a
-repository layer, so the swap is contained rather than a rewrite:
+repository layer, so it's a contained swap and not a rewrite:
 
 ```
 packages/db/src/repositories/*
 ```
 
-Everything above that layer talks to repositories, not to SQL. Want MongoDB?
-DynamoDB? Supabase? Firebase? Rewrite the repositories, leave the rest alone.
-The matching engine doesn't know or care where the rows came from.
+Everything above that layer talks to repositories, not to SQL. MongoDB?
+DynamoDB? Supabase? Firebase? Rewrite the repositories and leave the rest
+alone. The matching engine neither knows nor cares where the rows came from.
 
-One thing to know if you go NoSQL: the semantic search uses **pgvector**, so
-you'll need a vector store of some kind — Pinecone, Qdrant, Mongo Atlas Vector
-Search, whatever. Or drop it and run deterministic matching only. It still
-works, just with less magic.
+One catch if you go NoSQL: the semantic search uses **pgvector**, so you'll
+want a vector store of some kind — Pinecone, Qdrant, Mongo Atlas Vector Search,
+whatever. Or drop it and run deterministic matching only. Still works, just
+with less magic.
 
 Fork it, break it, make it yours. That's what it's here for.
 
@@ -173,35 +219,33 @@ Fork it, break it, make it yours. That's what it's here for.
 ## Handy commands
 
 ```bash
-pnpm discover      # go find jobs right now
-pnpm enrich        # parse and clean what was found
+pnpm discover      # go and find jobs right now
 pnpm match         # score everything against your profile
 pnpm recommend     # rank them
 pnpm notify        # run the email decision (respects dry run)
-pnpm probe         # check every source is reachable
+pnpm probe         # check every source is still reachable
 pnpm prune:jobs    # delete stored jobs that don't match your profile
 pnpm test          # 1,494 tests
 ```
 
-You shouldn't need these. The worker runs it all on a schedule. They're for
-when you're curious or something looks off.
+You shouldn't need these — the worker does all of it on a schedule. They're for
+when you're curious, or when something looks off.
 
 ---
 
 ## When it goes quiet
 
-**No jobs showing up?** Check the worker terminal. Then **Sources**, some need
-credentials and will say so.
+**No jobs?** Check the worker terminal, then **Sources** in the dashboard.
+Anything restricted says so, with the reason.
 
-**Jobs but no email?** Almost always one of three things: `NOTIFICATION_DRY_RUN`
-is still `true`, no email set in Notification Settings, or your match thresholds
-are higher than anything you've actually matched. That last one is sneaky. 
-check **Matches**, see what your top score really is, and set the threshold
-below it.
+**Jobs but no email?** Almost always one of three: `NOTIFICATION_DRY_RUN` is
+still `true`, no email address in Notification Settings, or your match
+threshold is higher than anything you've actually matched. That last one is
+sneaky — look at **Matches**, see what your top score really is, and set the
+threshold below it.
 
-**Getting jobs you can't take?** Your work authorisation is probably empty.
-Set it in your profile and it'll stop showing you on-site roles on other
-continents.
+**Getting jobs you can't take?** Check your location settings. Nigeria should
+be the only country listed.
 
 ---
 
@@ -209,11 +253,10 @@ continents.
 
 Yes please. Especially:
 
-- More job sources (`packages/connectors`)
-- Better matching
+- More Nigerian sources (`packages/connectors`) — Jooble, Careerjet, the
+  smaller boards
+- Better matching for non-technical roles
 - NoSQL adapters, if you build one
-- Non-English job boards, the relevance filter speaks English and German so
-  far, and that's a real gap
 
 Fork, branch, PR. `pnpm test` before you push.
 
@@ -221,15 +264,15 @@ Fork, branch, PR. `pnpm test` before you push.
 
 ## The honest bit
 
-This is a personal project I built for myself and then cleaned up enough to
-share. It's not enterprise software. There are rough edges. Some job boards
-change their HTML and break a connector. Some postings are weird.
+This is a personal project I built and then cleaned up enough to share. It's
+not enterprise software. Job boards change their HTML and break connectors.
+Some postings are strange. Some recruiters are stranger.
 
-But it does the actual job: it finds work while you sleep, and the email that
-shows up in the morning is real.
+But it does the actual job: it works the boards while you sleep, and the email
+that shows up in the morning is real.
 
 MIT licensed. Free forever. Not commercialising it, ever.
 
-**Now go get that job. 🚀**
+**Now go and get that job. 🚀**
 
 ⭐ *and star the repo if it helps*
