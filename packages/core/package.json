@@ -1,0 +1,17 @@
+{
+  "name": "@job-intel/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@job-intel/contracts": "workspace:*",
+    "@job-intel/observability": "workspace:*",
+    "zod": "^3.25.76"
+  }
+}

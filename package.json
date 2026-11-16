@@ -1,0 +1,71 @@
+{
+  "name": "naija-jobs",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Autonomous job discovery, matching and notification platform",
+  "packageManager": "pnpm@10.26.0",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "dev:web": "pnpm --filter @job-intel/web dev",
+    "dev:worker": "pnpm --filter @job-intel/worker dev",
+    "typecheck": "turbo run typecheck",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write \"**/*.{ts,tsx,json,md,css}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,json,md,css}\"",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:generate": "pnpm --filter @job-intel/db generate",
+    "db:migrate": "pnpm --filter @job-intel/db migrate",
+    "db:seed": "pnpm --filter @job-intel/db seed",
+    "db:studio": "pnpm --filter @job-intel/db studio",
+    "verify": "pnpm typecheck && pnpm lint && pnpm test",
+    "dev:db": "pnpm --filter @job-intel/db dev:db",
+    "discover": "pnpm --filter @job-intel/discovery discover",
+    "enrich": "pnpm --filter @job-intel/discovery discover -- --enrich",
+    "match": "pnpm --filter @job-intel/discovery match",
+    "recommend": "pnpm --filter @job-intel/discovery recommend",
+    "preview:email": "pnpm --filter @job-intel/notifications preview",
+    "notify": "pnpm --filter @job-intel/discovery notify",
+    "ops": "pnpm --filter @job-intel/discovery ops",
+    "probe": "pnpm --filter @job-intel/discovery probe",
+    "bootstrap:search": "pnpm --filter @job-intel/discovery bootstrap:search",
+    "prune:jobs": "pnpm --filter @job-intel/discovery prune:jobs",
+    "discovery": "pnpm --filter @job-intel/discovery discovery",
+    "learn": "pnpm --filter @job-intel/discovery learn"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "sharp",
+      "msgpackr-extract"
+    ],
+    "overrides": {
+      "vite": ">=6.4.3",
+      "esbuild": ">=0.25.0",
+      "drizzle-orm": ">=0.45.2",
+      "postcss": ">=8.5.23",
+      "sharp": ">=0.35.0"
+    }
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "@types/node": "^22.10.2",
+    "eslint": "^9.17.0",
+    "eslint-config-prettier": "^9.1.0",
+    "prettier": "^3.4.2",
+    "tsx": "^4.19.2",
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.18.1",
+    "vitest": "^3.2.7"
+  },
+  "dependencies": {
+    "mammoth": "^1.12.1",
+    "unpdf": "^1.8.1"
+  }
+}

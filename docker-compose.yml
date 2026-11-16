@@ -1,0 +1,48 @@
+# Optional local infrastructure.
+#
+# You do NOT need Docker to develop: `pnpm dev:db` serves an embedded Postgres
+# (with pgvector) over TCP. Use this file when you want a production-shaped
+# Postgres, or Redis for the BullMQ queue driver.
+#
+#   docker compose up -d
+#   DATABASE_URL=postgresql://jobintel:jobintel@localhost:5432/jobintel
+#   DATABASE_POOL_MAX=10
+#   QUEUE_DRIVER=bullmq
+#   REDIS_URL=redis://localhost:6379
+
+services:
+  postgres:
+    # pgvector is required by `job_embeddings`; the stock postgres image lacks it.
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: jobintel
+      POSTGRES_PASSWORD: jobintel
+      POSTGRES_DB: jobintel
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U jobintel -d jobintel']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    # `noeviction` is mandatory for BullMQ. Any LRU policy silently evicts queue
+    # keys under memory pressure and jobs cease to exist with no error.
+    command: redis-server --maxmemory-policy noeviction
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres-data:
+  redis-data:

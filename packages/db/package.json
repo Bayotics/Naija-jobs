@@ -1,0 +1,39 @@
+{
+  "name": "@job-intel/db",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./schema": "./src/schema/index.ts",
+    "./testing": "./src/testing/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "generate": "drizzle-kit generate",
+    "migrate": "tsx src/scripts/migrate.ts",
+    "seed": "tsx src/scripts/seed.ts",
+    "studio": "drizzle-kit studio",
+    "dev:db": "tsx src/scripts/dev-server.ts"
+  },
+  "dependencies": {
+    "@job-intel/config": "workspace:*",
+    "@job-intel/contracts": "workspace:*",
+    "@job-intel/core": "workspace:*",
+    "@job-intel/observability": "workspace:*",
+    "@job-intel/ops": "workspace:*",
+    "@neondatabase/serverless": "^1.1.0",
+    "dotenv": "^16.4.7",
+    "drizzle-orm": "^0.45.2",
+    "pg": "^8.13.1",
+    "ws": "^8.21.3"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.3.16",
+    "@electric-sql/pglite-socket": "^0.0.8",
+    "@job-intel/candidate": "workspace:*",
+    "@types/pg": "^8.11.10",
+    "@types/ws": "^8.18.1",
+    "drizzle-kit": "^0.30.1"
+  }
+}

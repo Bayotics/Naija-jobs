@@ -1,0 +1,41 @@
+{
+  "name": "@job-intel/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start -p 3000",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@job-intel/candidate": "workspace:*",
+    "@job-intel/config": "workspace:*",
+    "@job-intel/connectors": "workspace:*",
+    "@job-intel/contracts": "workspace:*",
+    "@job-intel/core": "workspace:*",
+    "@job-intel/db": "workspace:*",
+    "@job-intel/discovery": "workspace:*",
+    "@job-intel/enrichment": "workspace:*",
+    "@job-intel/matching": "workspace:*",
+    "@job-intel/notifications": "workspace:*",
+    "@job-intel/observability": "workspace:*",
+    "@job-intel/ops": "workspace:*",
+    "@job-intel/queue": "workspace:*",
+    "@job-intel/recommendation": "workspace:*",
+    "@job-intel/resume": "workspace:*",
+    "@job-intel/scheduler": "workspace:*",
+    "next": "^15.5.24",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "server-only": "^0.0.1",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.0.0",
+    "@types/react": "^19.0.2",
+    "@types/react-dom": "^19.0.2",
+    "tailwindcss": "^4.0.0"
+  }
+}

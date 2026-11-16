@@ -1,0 +1,132 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+#
+# Two services from one repository and one Dockerfile. The worker is the
+# product; the dashboard is optional and only needs to be awake when someone is
+# looking at it.
+#
+# Deploy: Render → New → Blueprint → pick this repo. Render reads this file,
+# creates both services, and prompts once for every secret marked `sync: false`.
+#
+# ── Why the worker is a `worker` and not a `web` ────────────────────────────
+#
+# A Render `web` service must bind a port and is put to sleep on the free tier
+# when nothing hits that port. This process binds nothing and must never sleep —
+# a sleeping worker is exactly the failure this deployment exists to avoid. A
+# `worker` service has no port, no health check, and no idle shutdown.
+
+services:
+  - type: worker
+    name: naija-jobs-worker
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    # Starter, not free: Render has no free worker tier, and this is the
+    # process that has to stay up.
+    plan: starter
+    region: frankfurt
+    branch: main
+    dockerCommand: node --import tsx apps/worker/src/index.ts
+
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+      # The direct driver. The `neon` WebSocket driver exists for networks that
+      # reset the Postgres wire protocol on 5432; a datacentre is not one, and
+      # going direct is faster with no extra layer to fail.
+      - key: DATABASE_DRIVER
+        value: pg
+
+      # Points at the isolated `naija_jobs` database, not `neondb`.
+      - key: DATABASE_URL
+        sync: false
+
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: AI_EMBEDDING_PROVIDER
+        value: openai
+      - key: AI_EMBEDDING_API_KEY
+        sync: false
+
+      - key: RESEND_API_KEY
+        sync: false
+      - key: NOTIFICATION_FROM_EMAIL
+        sync: false
+      - key: NOTIFICATION_TO_EMAIL
+        sync: false
+
+      # False, deliberately. The point of this deployment is email arriving.
+      - key: NOTIFICATION_DRY_RUN
+        value: "false"
+
+      # Required in production; the process refuses to boot without them.
+      - key: AUTH_SECRET
+        generateValue: true
+      - key: OPS_PASSWORD
+        generateValue: true
+      - key: FEEDBACK_TOKEN_SECRET
+        generateValue: true
+
+      # Four concurrent tasks on a paid instance. The ceiling here is politeness
+      # to the job boards rather than CPU — the domain rate limiter is what
+      # actually paces outbound requests.
+      - key: WORKER_CONCURRENCY
+        value: "4"
+
+      - key: CRAWLER_USER_AGENT
+        value: NaijaJobsBot/1.0
+      - key: CRAWLER_CONTACT_EMAIL
+        sync: false
+
+      - key: LOG_LEVEL
+        value: info
+      - key: LOG_PRETTY
+        value: "false"
+
+  - type: web
+    name: naija-jobs-web
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: starter
+    region: frankfurt
+    branch: main
+    dockerCommand: pnpm --filter @job-intel/web start
+    healthCheckPath: /api/v1/health
+
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_DRIVER
+        value: pg
+      - key: DATABASE_URL
+        sync: false
+      - key: PORT
+        value: "3000"
+      - key: APP_URL
+        sync: false
+      - key: AUTH_SECRET
+        # Same signing key as the worker, so a session issued by one is valid
+        # on the other.
+        fromService:
+          name: naija-jobs-worker
+          type: worker
+          envVarKey: AUTH_SECRET
+      - key: OPS_PASSWORD
+        fromService:
+          name: naija-jobs-worker
+          type: worker
+          envVarKey: OPS_PASSWORD
+      - key: FEEDBACK_TOKEN_SECRET
+        fromService:
+          name: naija-jobs-worker
+          type: worker
+          envVarKey: FEEDBACK_TOKEN_SECRET
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: AI_EMBEDDING_PROVIDER
+        value: openai
+      - key: AI_EMBEDDING_API_KEY
+        sync: false
+      - key: LOG_LEVEL
+        value: info
+      - key: LOG_PRETTY
+        value: "false"

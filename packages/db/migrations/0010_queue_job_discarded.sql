@@ -1,0 +1,1 @@
+ALTER TYPE "public"."audit_action" ADD VALUE 'queue.job_discarded' BEFORE 'digest.generated';

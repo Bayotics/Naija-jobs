@@ -1,0 +1,131 @@
+@import 'tailwindcss';
+
+/*
+ * Minimal, deliberately utilitarian shell.
+ *
+ * Tokens are defined for both themes on :root so a component never depends on
+ * a colour that only exists inside a media query.
+ */
+:root {
+  --bg: #ffffff;
+  --surface: #f7f7f8;
+  --border: #e4e4e7;
+  --text: #18181b;
+  --muted: #6b7280;
+  --accent: #2563eb;
+  --ok: #15803d;
+  --warn: #b45309;
+  --danger: #b91c1c;
+
+  /*
+   * Navigation.
+   *
+   * Separate tokens because the sidebar sits on --surface, not --bg, and the
+   * general-purpose --muted was never chosen against that background. At 13px
+   * on --surface it measured about 3:1 in dark mode, below the 4.5:1 that makes
+   * body text legible, which is why nineteen links read as grey mush.
+   *
+   * --nav-active-bg is the fix for a plain bug rather than a contrast problem:
+   * the active row previously painted itself --surface while sitting on
+   * --surface, so the current page had no visible marker at all.
+   */
+  --nav-fg: #52525b;
+  --nav-fg-hover: #18181b;
+  --nav-hover-bg: #ebebed;
+  --nav-active-fg: #1d4ed8;
+  --nav-active-bg: #e6eeff;
+  --nav-heading: #8b8b93;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0b0c0e;
+    --surface: #131518;
+    --border: #26282d;
+    --text: #e8e8ea;
+    --muted: #9298a3;
+    --accent: #60a5fa;
+    --ok: #4ade80;
+    --warn: #fbbf24;
+    --danger: #f87171;
+
+    --nav-fg: #b4b9c4;
+    --nav-fg-hover: #f4f4f6;
+    --nav-hover-bg: #1d2025;
+    --nav-active-fg: #93c5fd;
+    --nav-active-bg: #1b2432;
+    --nav-heading: #7c8391;
+  }
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+body {
+  font-family:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* Numeric columns must align. */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Wide content scrolls inside its own container, never the page body. */
+.scroll-x {
+  overflow-x: auto;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/*
+ * Navigation rows.
+ *
+ * Written as CSS rather than inline styles so hover and focus have somewhere to
+ * live — inline styles cannot express either, which is why every row previously
+ * looked identical until it was clicked.
+ */
+.nav-link {
+  color: var(--nav-fg);
+  border-left: 2px solid transparent;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease,
+    border-color 120ms ease;
+}
+
+.nav-link:hover {
+  background: var(--nav-hover-bg);
+  color: var(--nav-fg-hover);
+}
+
+.nav-link[data-active='true'] {
+  background: var(--nav-active-bg);
+  color: var(--nav-active-fg);
+  font-weight: 600;
+  /* Three cues, not one: fill, colour and a bar. The bar survives at a glance
+     in peripheral vision, which a background tint alone does not. */
+  border-left-color: var(--nav-active-fg);
+}
+
+.nav-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}

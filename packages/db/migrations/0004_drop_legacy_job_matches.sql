@@ -1,0 +1,2 @@
+CREATE TYPE "public"."recommendation_category" AS ENUM('EXCEPTIONAL_MATCH', 'STRONG_MATCH', 'GOOD_MATCH', 'POSSIBLE_MATCH', 'WEAK_MATCH', 'UNCERTAIN', 'INELIGIBLE');--> statement-breakpoint
+DROP TABLE "job_matches" CASCADE;

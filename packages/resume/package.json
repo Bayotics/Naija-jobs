@@ -1,0 +1,19 @@
+{
+  "name": "@job-intel/resume",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./testing": "./src/testing/index.ts"
+  },
+  "scripts": { "typecheck": "tsc --noEmit" },
+  "dependencies": {
+    "@job-intel/contracts": "workspace:*",
+    "@job-intel/core": "workspace:*",
+    "@job-intel/observability": "workspace:*",
+    "mammoth": "^1.12.1",
+    "unpdf": "^1.8.1",
+    "zod": "^3.25.76"
+  }
+}

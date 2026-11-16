@@ -1,0 +1,24 @@
+{
+  "name": "@job-intel/notifications",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./testing": "./src/testing/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "preview": "tsx src/scripts/preview.ts"
+  },
+  "dependencies": {
+    "@job-intel/config": "workspace:*",
+    "@job-intel/contracts": "workspace:*",
+    "@job-intel/core": "workspace:*",
+    "@job-intel/observability": "workspace:*",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2"
+  }
+}

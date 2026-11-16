@@ -1,0 +1,49 @@
+{
+  "name": "@job-intel/discovery",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "discover": "tsx src/scripts/run-discovery.ts",
+    "inspect-jobs": "tsx src/scripts/inspect.ts",
+    "match": "tsx src/scripts/run-matching.ts",
+    "recommend": "tsx src/scripts/run-recommendations.ts",
+    "notify": "tsx src/scripts/run-notifications.ts",
+    "ops": "tsx src/scripts/ops-report.ts",
+    "probe": "tsx src/scripts/probe-sources.ts",
+    "bootstrap:search": "tsx src/scripts/bootstrap-search.ts",
+    "prune:jobs": "tsx src/scripts/prune-irrelevant.ts",
+    "discovery": "tsx src/scripts/run-discovery-framework.ts",
+    "learn": "tsx src/scripts/run-learning.ts",
+    "resume": "tsx src/scripts/run-resume.ts"
+  },
+  "dependencies": {
+    "@job-intel/config": "workspace:*",
+    "@job-intel/connectors": "workspace:*",
+    "@job-intel/contracts": "workspace:*",
+    "@job-intel/core": "workspace:*",
+    "@job-intel/db": "workspace:*",
+    "@job-intel/observability": "workspace:*",
+    "cron-parser": "^4.9.0",
+    "zod": "^3.25.76",
+    "@job-intel/enrichment": "workspace:*",
+    "@job-intel/candidate": "workspace:*",
+    "@job-intel/matching": "workspace:*",
+    "@job-intel/queue": "workspace:*",
+    "@job-intel/recommendation": "workspace:*",
+    "@job-intel/notifications": "workspace:*",
+    "@job-intel/ops": "workspace:*",
+    "@job-intel/resume": "workspace:*",
+    "@job-intel/application": "workspace:*",
+    "@job-intel/search-config": "workspace:*",
+    "@job-intel/scheduler": "workspace:*"
+  },
+  "devDependencies": {
+    "drizzle-orm": "^0.45.2",
+    "tsx": "^4.19.2"
+  }
+}
