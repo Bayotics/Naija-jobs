@@ -1,6 +1,7 @@
 import { ConnectorRegistry } from './registry';
 import { RssConnector } from './feed/rss-connector';
 import { SitemapConnector } from './feed/sitemap-connector';
+import { JoobleConnector } from './api/jooble-connector';
 import { RemotiveConnector } from './api/remotive-connector';
 import { ArbeitnowConnector } from './api/arbeitnow-connector';
 import { JobicyConnector } from './api/jobicy-connector';
@@ -37,6 +38,7 @@ export * from './http/ssrf';
 export * from './http/checkpoint';
 export * from './feed/parse-feed';
 export * from './feed/rss-connector';
+export * from './api/jooble-connector';
 export * from './api/remotive-connector';
 export * from './api/arbeitnow-connector';
 export * from './api/jobicy-connector';
@@ -62,6 +64,7 @@ export function createDefaultRegistry(): ConnectorRegistry {
      * index, and the pages it lists carry Schema.org JobPosting markup.
      */
     .register(new SitemapConnector())
+    .register(new JoobleConnector())
     .register(new RemotiveConnector())
     .register(new ArbeitnowConnector())
     .register(new JobicyConnector())

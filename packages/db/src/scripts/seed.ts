@@ -143,6 +143,57 @@ const SEED_SOURCES: JobSource[] = [
     notes: `${SEED_MARKER} Sitemap published in robots.txt. Query-string URLs are disallowed and not used.`,
   }),
 
+  // ── Jooble ───────────────────────────────────────────────────────────────
+  //
+  // The answer to Indeed. Jooble aggregates much of the same market and
+  // publishes a documented API, so the listings arrive by asking rather than
+  // by pretending to be a browser.
+  //
+  // Enabled, but it reports itself unavailable until JOOBLE_API_KEY is set —
+  // which shows on the Sources page as "needs a key" rather than failing a
+  // scan every hour.
+  //
+  // The keywords are the seven fields. This API has no "everything" mode, so
+  // the term list is both the query and the only filter the source itself
+  // can apply.
+  jobSourceSchema.parse({
+    id: 'jooble-ng',
+    connectorId: 'jooble',
+    displayName: 'Jooble Nigeria',
+    sourceType: 'job_api',
+    accessTier: 'official_api',
+    priority: 1,
+    scheduleCron: '0 * * * *',
+    enabled: true,
+    credentialRefs: ['JOOBLE_API_KEY'],
+    config: {
+      keywords: [
+        'administrative officer',
+        'office assistant',
+        'personal assistant',
+        'secretary',
+        'receptionist',
+        'front desk',
+        'customer service',
+        'call centre agent',
+        'sales representative',
+        'business development',
+        'marketing officer',
+        'merchandiser',
+        'graduate trainee',
+        'data entry',
+        'research assistant',
+        'remote',
+      ],
+      location: '',
+      pagesPerKeyword: 2,
+      baseUrl: 'https://ng.jooble.org/api',
+      apiKeySecret: 'JOOBLE_API_KEY',
+    },
+    baseUrl: 'https://ng.jooble.org',
+    notes: `${SEED_MARKER} Documented API. The ng. host selects the Nigerian index.`,
+  }),
+
   // ── Hot Nigerian Jobs ────────────────────────────────────────────────────
   //
   // Disabled, and the reason is operational rather than legal: in the previous

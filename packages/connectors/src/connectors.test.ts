@@ -9,6 +9,7 @@ import {
   RssConnector,
   ArbeitnowConnector,
   JobicyConnector,
+  JoobleConnector,
   RemotiveConnector,
   RedditConnector,
   SearchDiscoveryConnector,
@@ -515,6 +516,112 @@ describe('JSON API connectors', () => {
     expect(items[0]?.locationText).toBe('Europe');
     expect(items[0]?.salaryText).toBe('$100,000 - $130,000');
     expect(items[0]?.externalId).toBe('1');
+  });
+
+  // ── Jooble ────────────────────────────────────────────────────────────────
+
+  it('reports itself unavailable, by name, when Jooble has no API key', () => {
+    const connector = new JoobleConnector();
+    const config = connector.configSchema.parse({ keywords: ['admin'] });
+
+    const withoutKey = connector.availability({ config, getSecret: () => undefined });
+    expect(withoutKey.available).toBe(false);
+    // The operator has to know *which* variable: "unavailable" alone sends
+    // someone reading source code to find out why.
+    expect(withoutKey.requires).toEqual(['JOOBLE_API_KEY']);
+
+    const withKey = connector.availability({ config, getSecret: () => 'a-key' });
+    expect(withKey.available).toBe(true);
+  });
+
+  it('yields nothing rather than throwing when Jooble has no key', async () => {
+    const { client, mock } = testHttpClient([{ match: 'jooble.org', body: '{}' }]);
+    const connector = new JoobleConnector();
+    const { items } = await collect(
+      connector.discover(
+        testContext({ config: connector.configSchema.parse({ keywords: ['admin'] }), http: client }),
+      ),
+    );
+
+    expect(items).toHaveLength(0);
+    // And it does not spend a request finding that out.
+    expect(mock.calls).toHaveLength(0);
+  });
+
+  it('maps Jooble results and keeps one copy of a job two keywords both found', async () => {
+    const page = (link: string) =>
+      JSON.stringify({
+        totalCount: 1,
+        jobs: [
+          {
+            title: 'Administrative Officer',
+            company: 'Lagos Holdings',
+            location: 'Lagos',
+            snippet: 'Manage the front office and diaries.',
+            salary: 'NGN 150,000 per month',
+            type: 'Full-time',
+            source: 'jobberman.com',
+            updated: '2026-11-14T09:00:00',
+            link,
+          },
+        ],
+      });
+
+    const { client, mock } = testHttpClient([
+      { match: 'jooble.org', body: page('https://ng.jooble.org/jdp/123') },
+    ]);
+    const connector = new JoobleConnector();
+    const { items } = await collect(
+      connector.discover(
+        testContext({
+          config: connector.configSchema.parse({
+            keywords: ['administrative officer', 'office assistant'],
+            pagesPerKeyword: 1,
+          }),
+          http: client,
+          secrets: { JOOBLE_API_KEY: 'test-key' },
+        }),
+      ),
+    );
+
+    // Two keywords, two requests, one job: overlapping searches on an
+    // aggregator return the same posting constantly.
+    expect(mock.calls).toHaveLength(2);
+    expect(items).toHaveLength(1);
+
+    expect(items[0]?.title).toBe('Administrative Officer');
+    expect(items[0]?.companyName).toBe('Lagos Holdings');
+    expect(items[0]?.locationText).toBe('Lagos');
+    expect(items[0]?.salaryText).toBe('NGN 150,000 per month');
+    // The link is the identity: Jooble's numeric id is not stable between
+    // requests, so keying on it would re-import the corpus every run.
+    expect(items[0]?.externalId).toBe('https://ng.jooble.org/jdp/123');
+    // Which board it was aggregated from survives, and so does the fact that
+    // the description is only an excerpt.
+    expect(items[0]?.sourceMetadata['aggregatedFrom']).toBe('jobberman.com');
+    expect(items[0]?.sourceMetadata['excerptOnly']).toBe(true);
+  });
+
+  it('survives a Jooble request that never succeeds instead of failing the run', async () => {
+    // Every attempt 500s, so `getJson` throws once retries are exhausted. A
+    // source being down must not take the discovery pass with it.
+    const { client } = testHttpClient([{ match: 'jooble.org', status: 500, body: 'upstream error' }]);
+
+    const connector = new JoobleConnector();
+    const { items } = await collect(
+      connector.discover(
+        testContext({
+          config: connector.configSchema.parse({
+            keywords: ['data entry', 'receptionist'],
+            pagesPerKeyword: 1,
+          }),
+          http: client,
+          secrets: { JOOBLE_API_KEY: 'test-key' },
+        }),
+      ),
+    );
+
+    expect(items).toHaveLength(0);
   });
 
   it('maps Arbeitnow, following next_url pagination', async () => {
