@@ -66,14 +66,14 @@ describe('application configuration', () => {
   it('produces a fully valid config with no overrides', () => {
     const config = defaultAppConfig();
     expect(config.matching.minimumScore).toBeGreaterThanOrEqual(0);
-    expect(config.notifications.enabled).toBe(false);
+    expect(config.ai.enabled).toBe(false);
   });
 
   it('deep-merges overrides without dropping sibling defaults', () => {
     const resolved = resolveAppConfig({ matching: { minimumScore: 72 } });
     expect(resolved.matching.minimumScore).toBe(72);
     // Siblings must survive a partial override.
-    expect(resolved.matching.instantNotifyScore).toBe(defaultAppConfig().matching.instantNotifyScore);
+    expect(resolved.matching.exceptionalScore).toBe(defaultAppConfig().matching.exceptionalScore);
     expect(resolved.dedup.simhashMaxDistance).toBe(defaultAppConfig().dedup.simhashMaxDistance);
   });
 

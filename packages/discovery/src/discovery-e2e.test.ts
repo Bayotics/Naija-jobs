@@ -11,7 +11,6 @@ import {
   EventRepository,
   JobRepository,
   MatchRepository,
-  NotificationRepository,
   ProfileRepository,
   RecommendationRepository,
   SourceRepository,
@@ -275,13 +274,7 @@ describe('discovery pipeline end to end', () => {
     const ranking = await recommendation.rank(profileId);
     expect(ranking.ranked).toBeGreaterThan(0);
 
-    // ── 7. Notification eligibility ─────────────────────────────────────
-    const notifications = new NotificationRepository(ctx.db);
-    const notified = await notifications.loadNotifiedJobs(profileId);
-    // Nothing has been emailed, so eligibility is decided fresh — not blocked
-    // by a stale "already sent" record.
-    expect(notified.size).toBe(0);
-
+    // ── 7. What the dashboard would show ────────────────────────────────
     const top = await recommendations.topRecommendations({ profileId, limit: 10 });
     expect(top.length).toBeGreaterThan(0);
     expect(typeof top[0]?.recommendation.notificationEligible).toBe('boolean');

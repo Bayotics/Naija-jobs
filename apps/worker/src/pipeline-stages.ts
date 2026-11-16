@@ -4,7 +4,6 @@ import {
   EnrichmentRepository,
   JobRepository,
   MatchRepository,
-  NotificationRepository,
   OpsRepository,
   ProfileRepository,
   RecommendationRepository,
@@ -14,11 +13,9 @@ import {
 import {
   EnrichmentRunner,
   MatchingService,
-  NotificationService,
   RecommendationService,
 } from '@job-intel/discovery';
 import { HashingEmbeddingProvider } from '@job-intel/matching';
-import { MemoryEmailProvider, ResendEmailProvider } from '@job-intel/notifications';
 import type { EventRecorder, Logger } from '@job-intel/observability';
 import type { AppConfig, Env } from '@job-intel/config';
 
@@ -212,81 +209,6 @@ export async function runRecommendation(deps: StageDependencies): Promise<StageR
       signalsRefreshed: refreshed,
       ranked: ranking.ranked,
       considered: ranking.considered,
-    },
-  };
-}
-
-// ── Notification ────────────────────────────────────────────────────────────
-
-/**
- * Chooses the email transport.
- *
- * Two independent switches have to agree before anything leaves the machine:
- * `notifications.enabled` in runtime config decides whether notifications are
- * *computed*, and `NOTIFICATION_DRY_RUN` decides whether they are *sent*. The
- * split is deliberate — the decision pass is worth running and inspecting long
- * before anyone wants live email, and a single flag would force that choice.
- *
- * Dry run is the default in both directions: a missing API key captures rather
- * than sends, so a misconfiguration cannot silently start emailing.
- */
-function emailProvider(env: Env, logger: Logger) {
-  if (env.NOTIFICATION_DRY_RUN || !env.RESEND_API_KEY) {
-    logger.info('Notifications in dry run — decisions recorded, nothing sent.', {
-      reason: env.NOTIFICATION_DRY_RUN ? 'NOTIFICATION_DRY_RUN=true' : 'no RESEND_API_KEY',
-    });
-    return new MemoryEmailProvider();
-  }
-
-  return new ResendEmailProvider(env.RESEND_API_KEY);
-}
-
-export async function runNotification(deps: StageDependencies): Promise<StageResult> {
-  const profileId = await activeProfileId(deps.db, deps.logger);
-  if (!profileId) return { processed: 0, detail: { reason: 'no active profile' } };
-
-  const config = await deps.config();
-
-  if (!config.notifications.enabled) {
-    return { processed: 0, detail: { reason: 'notifications.enabled is false' } };
-  }
-
-  const notifications = new NotificationRepository(deps.db);
-
-  const service = new NotificationService({
-    notifications,
-    recommendations: new RecommendationRepository(deps.db),
-    candidates: new CandidateRepository(deps.db),
-    profiles: new ProfileRepository(deps.db),
-    sources: new SourceRepository(deps.db),
-    logger: deps.logger,
-    events: deps.events,
-    provider: emailProvider(deps.env, deps.logger),
-    config: { enabled: true, appUrl: deps.env.APP_URL },
-    preferenceSecret: deps.env.FEEDBACK_TOKEN_SECRET ?? null,
-    fromEmail: deps.env.NOTIFICATION_FROM_EMAIL ?? 'notifications@localhost',
-  });
-
-  const run = await service.processCandidate(profileId, { reason: 'scheduled notification pass' });
-
-  /*
-   * Delivery is a separate pass over the outbox, so a decision that has been
-   * made is never lost to a transport failure: the row persists and the next
-   * cycle retries it.
-   */
-  const delivery = await service.processDeliveries();
-
-  return {
-    processed: run.immediateAlerts + (run.digestSent ? 1 : 0),
-    detail: {
-      considered: run.considered,
-      alerts: run.immediateAlerts,
-      digestSent: run.digestSent,
-      digestJobs: run.digestJobs,
-      suppressed: run.suppressed,
-      sent: delivery.sent,
-      retrying: delivery.retrying,
-      failed: delivery.failed,
     },
   };
 }

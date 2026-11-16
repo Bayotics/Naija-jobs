@@ -75,7 +75,6 @@ export default async function OpsRunDetailPage({
         <Metric label="Duplicates" value={run.duplicatesDetected} />
         <Metric label="Matched" value={run.jobsMatched} />
         <Metric label="Recommended" value={run.jobsRecommended} />
-        <Metric label="Notified" value={run.notificationsGenerated} />
         <Metric
           label="Duration"
           value={run.durationMs === null ? 'running' : `${(run.durationMs / 1000).toFixed(1)}s`}

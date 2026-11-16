@@ -3,13 +3,11 @@ import { loadDotenv, loadEnv } from '@job-intel/config';
 import { searchProfileSchema, type SearchProfile } from '@job-intel/contracts';
 import {
   CandidateRepository,
-  NotificationRepository,
   ProfileRepository,
   SearchConfigRepository,
   createDatabase,
   optionsFromEnv,
 } from '@job-intel/db';
-import type { Env } from '@job-intel/config';
 
 /**
  * Creates the first search profile: `pnpm bootstrap:search`
@@ -60,7 +58,6 @@ async function main(): Promise<void> {
      * failed with "No active preferences" against a fully seeded database.
      */
     await ensurePreferences(new CandidateRepository(handle.db), active.profileId, payload);
-    await ensureNotificationRecipient(new NotificationRepository(handle.db), active.profileId, env);
 
     const existing = await searchConfig.listProfiles(active.profileId);
 
@@ -279,45 +276,6 @@ async function ensurePreferences(
   console.log(`Matching preferences created (v${created.version}).`);
 }
 
-/**
- * Puts the recipient address where the notification service will actually look.
- *
- * `NOTIFICATION_TO_EMAIL` is declared in the env schema and was read by nothing.
- * The service resolves the recipient from `preferences.email` alone, so with the
- * address only in `.env` every digest hit `No notification email configured;
- * nothing queued` — a warning, not an error, on a system otherwise fully
- * configured to send. Documented, plausible, and silently undeliverable.
- *
- * Copied rather than read at send time on purpose: the address is a user
- * preference that belongs in the database where the UI can edit it, and an env
- * var read at send time could not be changed without a redeploy. This is the
- * seed, not the source of truth.
- */
-async function ensureNotificationRecipient(
-  notifications: NotificationRepository,
-  profileId: string,
-  env: Env,
-): Promise<void> {
-  const { preferences } = await notifications.getPreferences(profileId);
-
-  if (preferences.email) {
-    console.log(`Notification recipient already set (${preferences.email}).`);
-    return;
-  }
-
-  const address = env.NOTIFICATION_TO_EMAIL;
-
-  if (!address) {
-    console.log(
-      'No notification recipient. Set NOTIFICATION_TO_EMAIL and re-run, or add one in the UI — ' +
-        'without it, digests are computed and never delivered.',
-    );
-    return;
-  }
-
-  await notifications.savePreferences(profileId, { ...preferences, email: address });
-  console.log(`Notification recipient set to ${address}.`);
-}
 
 function asStrings(value: unknown): string[] {
   if (!Array.isArray(value)) return [];

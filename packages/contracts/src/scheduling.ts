@@ -54,9 +54,7 @@ export const TASK_TYPES = [
   'ENRICH_JOB',
   'MATCH_JOB',
   'APPLICATION_ANALYSIS',
-  'NOTIFICATION_EVALUATION',
-  'SEND_NOTIFICATION',
-  'GENERATE_DIGEST',
+  'RANK_JOBS',
   'UPDATE_ANALYTICS',
   'LEARNING_UPDATE',
   'CONFIGURATION_RECONCILIATION',
@@ -135,13 +133,13 @@ export const TASK_PRIORITY_RANK: Readonly<Record<TaskPriority, number>> = {
  * Default priority per task type, overridable per task.
  *
  * The shape of this table is the scheduling policy: work a person is waiting on
- * outranks work that keeps the system tidy. `SEND_NOTIFICATION` is CRITICAL
- * because a deadline alert delivered late is worthless, while `UPDATE_ANALYTICS`
- * is LOW because nobody has ever needed a dashboard to be current to the second.
+ * outranks work that keeps the system tidy. `RANK_JOBS` is HIGH because it is
+ * what fills the dashboard the candidate actually opens, while
+ * `UPDATE_ANALYTICS` is LOW because nobody has ever needed a dashboard to be
+ * current to the second.
  */
 export const DEFAULT_TASK_PRIORITY: Readonly<Record<TaskType, TaskPriority>> = {
-  SEND_NOTIFICATION: 'CRITICAL',
-  NOTIFICATION_EVALUATION: 'HIGH',
+  RANK_JOBS: 'HIGH',
   SEARCH_PROFILE_SCAN: 'HIGH',
   SOURCE_SCAN: 'NORMAL',
   FETCH_JOB: 'NORMAL',
@@ -151,7 +149,6 @@ export const DEFAULT_TASK_PRIORITY: Readonly<Record<TaskType, TaskPriority>> = {
   ENRICH_JOB: 'NORMAL',
   MATCH_JOB: 'NORMAL',
   APPLICATION_ANALYSIS: 'NORMAL',
-  GENERATE_DIGEST: 'NORMAL',
   CONFIGURATION_RECONCILIATION: 'HIGH',
   SOURCE_HEALTH_CHECK: 'LOW',
   UPDATE_ANALYTICS: 'LOW',
@@ -176,7 +173,6 @@ export const DEFAULT_TASK_TIMEOUT_MS: Readonly<Record<TaskType, number>> = {
   PARSE_JOB: 30_000,
   NORMALIZE_JOB: 30_000,
   DEDUPLICATE_JOB: 60_000,
-  SEND_NOTIFICATION: 60_000,
   UPDATE_ANALYTICS: 60_000,
   CLEANUP: 120_000,
   CONFIGURATION_RECONCILIATION: 120_000,
@@ -184,8 +180,7 @@ export const DEFAULT_TASK_TIMEOUT_MS: Readonly<Record<TaskType, number>> = {
   MATCH_JOB: 120_000,
   ENRICH_JOB: 300_000,
   APPLICATION_ANALYSIS: 300_000,
-  NOTIFICATION_EVALUATION: 120_000,
-  GENERATE_DIGEST: 180_000,
+  RANK_JOBS: 120_000,
   LEARNING_UPDATE: 300_000,
   SEARCH_PROFILE_SCAN: 600_000,
 };

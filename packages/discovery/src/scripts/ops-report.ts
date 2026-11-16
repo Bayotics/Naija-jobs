@@ -11,7 +11,6 @@ import { createLogger, EventRecorder } from '@job-intel/observability';
 import {
   ConfigRepository,
   EventRepository,
-  NotificationRepository,
   OpsRepository,
   ProfileRepository,
   RecommendationRepository,
@@ -59,12 +58,10 @@ async function main() {
     sources: new SourceRepository(handle.db),
     profiles: new ProfileRepository(handle.db),
     recommendations: new RecommendationRepository(handle.db),
-    notifications: new NotificationRepository(handle.db),
     queue: createQueueDriver(env),
     logger,
     events: new EventRecorder(logger, new EventRepository(handle.db)),
     checkDatabase: () => checkDatabaseHealth(handle.db),
-    emailProviderId: env.RESEND_API_KEY ? 'resend' : 'memory',
     aiEnabled: config.ai.enabled,
     aiModel: config.ai.triageModel,
     dailyBudgetUsd: config.ai.dailyBudgetUsd,
@@ -94,11 +91,6 @@ async function main() {
   // ── Recommendations and notifications ─────────────────────────────────────
   console.log(rule('RECOMMENDATIONS'));
   for (const [key, value] of Object.entries(overview.recommendations)) {
-    console.log(`${pad(`  ${key}`)} ${value}`);
-  }
-
-  console.log(rule('NOTIFICATIONS'));
-  for (const [key, value] of Object.entries(overview.notifications)) {
     console.log(`${pad(`  ${key}`)} ${value}`);
   }
 
@@ -187,7 +179,7 @@ async function main() {
   for (const run of runs) {
     console.log(
       `  ${run.startedAt.toISOString().slice(0, 19).replace('T', ' ')} ${run.trigger.padEnd(9)} ${run.status.padEnd(8)} ` +
-        `discovered=${run.jobsDiscovered} matched=${run.jobsMatched} recommended=${run.jobsRecommended} notified=${run.notificationsGenerated}` +
+        `discovered=${run.jobsDiscovered} matched=${run.jobsMatched} recommended=${run.jobsRecommended}` +
         (run.dryRun ? '  [dry run]' : ''),
     );
   }
@@ -218,7 +210,7 @@ async function main() {
     console.log(`${pad('  would enrich')} ${report.wouldEnrich}`);
     console.log(`${pad('  would match')} ${report.wouldMatch}`);
     console.log(`${pad('  would recommend')} ${report.wouldRecommend}`);
-    console.log(`${pad('  would notify')} ${report.wouldNotify}`);
+    console.log(`${pad('  would notify')} ${report.wouldShortlist}`);
     console.log(`${pad('  suppressed')} ${report.suppressed.length}`);
     for (const skipped of report.skippedWrites) console.log(`    skipped: ${skipped}`);
   }

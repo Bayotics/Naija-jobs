@@ -36,7 +36,6 @@ export function GET(request: Request) {
         jobsProcessed: run.jobsProcessed,
         jobsMatched: run.jobsMatched,
         jobsRecommended: run.jobsRecommended,
-        notificationsGenerated: run.notificationsGenerated,
         errorCount: run.errorCount,
         warningCount: run.warningCount,
         triggeredBy: run.triggeredBy,

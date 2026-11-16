@@ -48,8 +48,7 @@ function field(
 }
 
 export function buildJobInspection(inspection: Inspection) {
-  const { job, enrichment, signals, duplicates, match, recommendation, decisions, events } =
-    inspection;
+  const { job, enrichment, signals, duplicates, match, recommendation, events } = inspection;
 
   // ── Raw: exactly what the source gave us ──────────────────────────────────
   const raw: InspectedField[] = [
@@ -213,15 +212,6 @@ export function buildJobInspection(inspection: Inspection) {
         }
       : null,
 
-    // The notification debugger: the direct answer to "why didn't I get this?"
-    notifications: decisions.map((decision) => ({
-      outcome: decision.outcome,
-      reason: decision.reason,
-      priority: decision.priority,
-      recommendationScore: decision.recommendationScore,
-      deferredUntil: decision.deferredUntil,
-      decidedAt: decision.decidedAt,
-    })),
 
     events: events.map((event) => ({
       name: event.name,

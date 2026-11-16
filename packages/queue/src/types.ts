@@ -25,7 +25,6 @@ export const QUEUE_NAMES = [
   'match-triage',
   'match-deep',
   'ranking',
-  'notification',
   'feedback',
   'learning',
   'maintenance',

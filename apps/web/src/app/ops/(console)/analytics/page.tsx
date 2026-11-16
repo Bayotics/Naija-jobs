@@ -210,29 +210,6 @@ export default async function OpsAnalyticsPage({
               </Table>
             </Card>
 
-            <Card
-              title="Notification outcomes"
-              description="Every decision the notification layer has recorded, by named outcome."
-            >
-              {analytics.outcomes.length === 0 ? (
-                <p className="text-xs" style={{ color: 'var(--muted)' }}>
-                  No notification decision recorded yet.
-                </p>
-              ) : (
-                <Table head={['Outcome', 'Count']}>
-                  {analytics.outcomes.map((outcome) => (
-                    <tr key={outcome.outcome} className="border-b" style={{ borderColor: 'var(--border)' }}>
-                      <td className="px-3 py-1.5 text-xs">
-                        <Badge tone={outcome.outcome.startsWith('SENT') ? 'ok' : 'neutral'}>
-                          {outcome.outcome}
-                        </Badge>
-                      </td>
-                      <td className="tabular px-3 py-1.5 text-xs">{outcome.count}</td>
-                    </tr>
-                  ))}
-                </Table>
-              )}
-            </Card>
           </div>
         </>
       )}

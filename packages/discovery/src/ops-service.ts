@@ -10,7 +10,6 @@ import {
   type SystemHealth,
 } from '@job-intel/contracts';
 import type {
-  NotificationRepository,
   OpsRepository,
   ProfileRepository,
   RecommendationRepository,
@@ -28,7 +27,6 @@ import {
   summariseCost,
   summariseLatency,
 } from '@job-intel/ops';
-import type { NotificationService } from './notification-service';
 import type { RecommendationService } from './recommendation-service';
 
 /**
@@ -51,15 +49,12 @@ export interface OpsServiceDependencies {
   sources: SourceRepository;
   profiles: ProfileRepository;
   recommendations: RecommendationRepository;
-  notifications: NotificationRepository;
   queue: QueueDriver;
   logger: Logger;
   events: EventRecorder;
   /** Optional: absent means the corresponding card reports `disabled`. */
-  notificationService?: NotificationService;
   recommendationService?: RecommendationService;
   checkDatabase?: () => Promise<{ ok: boolean; latencyMs?: number; error?: string }>;
-  emailProviderId?: string | null;
   aiEnabled?: boolean;
   aiModel?: string | null;
   dailyBudgetUsd?: number | null;
@@ -73,7 +68,6 @@ const MONITORED_QUEUES: QueueName[] = [
   'match-deep',
   'ranking',
   'validation',
-  'notification',
   'maintenance',
 ];
 
@@ -86,7 +80,6 @@ const STAGE_QUEUE: Readonly<Record<PipelineStage, QueueName | null>> = {
   quality: 'validation',
   matching: 'match-triage',
   ranking: 'ranking',
-  notification: 'notification',
 };
 
 export class OpsService {
@@ -139,23 +132,6 @@ export class OpsService {
         return { status: 'healthy' as const, detail: `last run ${hours}h ago (${last.status})` };
       }),
 
-      probe('email_provider', () => {
-        const id = this.deps.emailProviderId;
-        if (!id || id === 'null') {
-          return Promise.resolve({
-            status: 'disabled' as const,
-            detail: 'no provider configured; notifications stay queued',
-          });
-        }
-        if (id === 'memory') {
-          return Promise.resolve({
-            status: 'degraded' as const,
-            detail: 'in-memory provider — messages are captured, not sent',
-          });
-        }
-        return Promise.resolve({ status: 'healthy' as const, detail: `${id} configured` });
-      }),
-
       probe('ai_provider', async () => {
         if (!this.deps.aiEnabled) {
           return { status: 'disabled' as const, detail: 'AI is switched off; the pipeline runs deterministically' };
@@ -198,15 +174,12 @@ export class OpsService {
     const profile = await this.deps.profiles.getActiveProfile().catch(() => null);
     const profileId = profile?.profileId ?? null;
 
-    const [health, counters, recommendations, notifications, sourceScores, current, recent, backlog] =
+    const [health, counters, recommendations, sourceScores, current, recent, backlog] =
       await Promise.all([
         this.systemHealth(),
         this.deps.ops.pipelineCounters(profileId).catch(() => null),
         profileId
           ? this.deps.ops.recommendationStats(profileId).catch(() => null)
-          : Promise.resolve(null),
-        profileId
-          ? this.deps.ops.notificationStats(profileId).catch(() => null)
           : Promise.resolve(null),
         this.sourceHealthScores().catch(() => [] as SourceHealthScore[]),
         this.deps.ops.currentRun().catch(() => null),
@@ -224,7 +197,6 @@ export class OpsService {
         enriched: counters?.enriched ?? 0,
         matched: counters?.matched ?? 0,
         recommended: counters?.recommended ?? 0,
-        notified: counters?.notified ?? 0,
         duplicates: counters?.duplicates ?? 0,
         stale: counters?.stale ?? 0,
       },
@@ -233,12 +205,6 @@ export class OpsService {
         strong: recommendations?.strong ?? 0,
         averageScore: recommendations?.averageScore ?? 0,
         averageConfidence: recommendations?.averageConfidence ?? 0,
-      },
-      notifications: {
-        alertsToday: notifications?.alertsToday ?? 0,
-        digestsToday: notifications?.digestsToday ?? 0,
-        failures: notifications?.failures ?? 0,
-        suppressed: notifications?.suppressed ?? 0,
       },
       sources: {
         healthy: sourceScores.filter((s) => s.status === 'healthy').length,
@@ -295,9 +261,7 @@ export class OpsService {
                 ? (counters?.matched ?? 0)
                 : stage === 'ranking'
                   ? (counters?.recommended ?? 0)
-                  : stage === 'notification'
-                    ? (counters?.notified ?? 0)
-                    : 0);
+                  : 0);
 
       const failed = recorded?.failed ?? (stage === 'enrichment' ? (counters?.enrichmentFailed ?? 0) : 0);
       const waiting = counts ? counts.waiting + counts.delayed : (recorded?.waiting ?? 0);
@@ -449,9 +413,10 @@ export class OpsService {
   /**
    * A dry run.
    *
-   * Executes the decision half of the pipeline and performs **no** sends and no
-   * preference writes. The notification decisions are computed from stored
-   * state, so the report shows exactly what a real run would have emailed.
+   * Executes the decision half of the pipeline and writes nothing. The
+   * shortlist is computed from stored state, so the report shows exactly what
+   * the dashboard would put at the top of the list — which is the thing an
+   * operator wants to see before moving a threshold.
    */
   async dryRun(options: { triggeredBy: string; reason?: string }): Promise<DryRunReport> {
     const startedAt = Date.now();
@@ -464,10 +429,9 @@ export class OpsService {
     });
 
     const skippedWrites: string[] = [
-      'no emails sent',
-      'no notification events created',
       'no candidate preferences modified',
       'no job records written',
+      'no recommendations persisted',
     ];
 
     if (!profile) {
@@ -478,8 +442,8 @@ export class OpsService {
         wouldEnrich: 0,
         wouldMatch: 0,
         wouldRecommend: 0,
-        wouldNotify: 0,
-        notifications: [],
+        wouldShortlist: 0,
+        shortlist: [],
         suppressed: [],
         skippedWrites,
         durationMs: Date.now() - startedAt,
@@ -489,40 +453,32 @@ export class OpsService {
 
     const counters = await this.deps.ops.pipelineCounters(profile.profileId);
 
-    // The notification decisions, computed but not acted on. This is the part
-    // an operator actually wants to see before changing a threshold.
     const ranked = await this.deps.recommendations.topRecommendations({
       profileId: profile.profileId,
       limit: 50,
       notificationEligibleOnly: true,
     });
 
-    const notified = await this.deps.notifications.loadNotifiedJobs(profile.profileId);
+    const shortlist: DryRunReport['shortlist'] = ranked.map((row) => ({
+      jobId: row.job.id,
+      title: row.job.title,
+      company: row.job.companyNameRaw,
+      tier: row.recommendation.tier,
+      priority: row.recommendation.tier === 'EXCEPTIONAL' ? 'URGENT' : 'NORMAL',
+      headline: `${row.job.title} — ${row.job.companyNameRaw}`,
+      reason: `Recommendation ${Math.round(row.recommendation.finalScore)} clears your thresholds`,
+    }));
 
-    const notifications: DryRunReport['notifications'] = [];
+    /*
+     * Nothing is suppressed here any more.
+     *
+     * This list used to hold jobs held back because they had already been
+     * emailed. A dashboard has no equivalent: a job you have already seen is
+     * still a job you can scroll back to, so hiding it would lose it. Kept in
+     * the shape because scam and duplicate suppression still populate it
+     * upstream.
+     */
     const suppressed: DryRunReport['suppressed'] = [];
-
-    for (const row of ranked) {
-      const already = notified.get(row.job.id);
-      if (already) {
-        suppressed.push({
-          jobId: row.job.id,
-          outcome: 'SUPPRESSED_ALREADY_NOTIFIED',
-          reason: `Already notified ${already.lastNotifiedAt.toISOString().slice(0, 10)}`,
-        });
-        continue;
-      }
-
-      notifications.push({
-        jobId: row.job.id,
-        title: row.job.title,
-        company: row.job.companyNameRaw,
-        type: 'JOB_DIGEST',
-        priority: row.recommendation.tier === 'EXCEPTIONAL' ? 'URGENT' : 'NORMAL',
-        subject: `${row.job.title} — ${row.job.companyNameRaw}`,
-        reason: `Recommendation ${Math.round(row.recommendation.finalScore)} clears your thresholds`,
-      });
-    }
 
     await this.deps.ops.completeRun(runId, {
       status: 'success',
@@ -531,7 +487,6 @@ export class OpsService {
         jobsProcessed: counters.totalJobs,
         jobsMatched: counters.matched,
         jobsRecommended: counters.recommended,
-        notificationsGenerated: 0,
       },
     });
 
@@ -541,8 +496,8 @@ export class OpsService {
       wouldEnrich: Math.max(0, counters.totalJobs - counters.enriched),
       wouldMatch: counters.matched,
       wouldRecommend: counters.recommended,
-      wouldNotify: notifications.length,
-      notifications,
+      wouldShortlist: shortlist.length,
+      shortlist,
       suppressed,
       skippedWrites,
       durationMs: Date.now() - startedAt,

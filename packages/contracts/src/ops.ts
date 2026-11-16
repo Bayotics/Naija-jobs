@@ -70,7 +70,6 @@ export const PIPELINE_STAGES = [
   'quality',
   'matching',
   'ranking',
-  'notification',
 ] as const;
 export type PipelineStage = (typeof PIPELINE_STAGES)[number];
 
@@ -90,11 +89,12 @@ export type PipelineStageStatus = z.infer<typeof pipelineStageStatusSchema>;
 // ── The funnel ──────────────────────────────────────────────────────────────
 
 /**
- * Discovery → notification, as counts.
+ * Discovery → shortlist, as counts.
  *
  * Each step reports how many entered and how many survived, so the place the
  * corpus collapses is visible rather than inferred. `10,000 discovered → 14
- * notified` is only alarming if you cannot see which step ate the other 9,986.
+ * shortlisted` is only alarming if you cannot see which step ate the other
+ * 9,986.
  */
 export const funnelStepSchema = z.object({
   key: z.string().max(40),
@@ -262,7 +262,6 @@ export const pipelineRunSchema = z.object({
   jobsProcessed: z.number().int().min(0).default(0),
   jobsMatched: z.number().int().min(0).default(0),
   jobsRecommended: z.number().int().min(0).default(0),
-  notificationsGenerated: z.number().int().min(0).default(0),
   duplicatesDetected: z.number().int().min(0).default(0),
 
   errorCount: z.number().int().min(0).default(0),
@@ -290,16 +289,17 @@ export const dryRunReportSchema = z.object({
   wouldEnrich: z.number().int().min(0),
   wouldMatch: z.number().int().min(0),
   wouldRecommend: z.number().int().min(0),
-  wouldNotify: z.number().int().min(0),
-  notifications: z
+  wouldShortlist: z.number().int().min(0),
+  /** What the dashboard would put in front of the candidate, and why. */
+  shortlist: z
     .array(
       z.object({
         jobId: z.string().uuid(),
         title: z.string().max(300),
         company: z.string().max(300),
-        type: z.string().max(40),
+        tier: z.string().max(40),
         priority: z.string().max(20),
-        subject: z.string().max(300),
+        headline: z.string().max(300),
         reason: z.string().max(400),
       }),
     )
@@ -441,7 +441,6 @@ export const dashboardOverviewSchema = z.object({
     enriched: z.number().int().min(0),
     matched: z.number().int().min(0),
     recommended: z.number().int().min(0),
-    notified: z.number().int().min(0),
     duplicates: z.number().int().min(0),
     stale: z.number().int().min(0),
   }),
@@ -450,12 +449,6 @@ export const dashboardOverviewSchema = z.object({
     strong: z.number().int().min(0),
     averageScore: z.number().min(0).max(100),
     averageConfidence: z.number().min(0).max(1),
-  }),
-  notifications: z.object({
-    alertsToday: z.number().int().min(0),
-    digestsToday: z.number().int().min(0),
-    failures: z.number().int().min(0),
-    suppressed: z.number().int().min(0),
   }),
   sources: z.object({
     healthy: z.number().int().min(0),

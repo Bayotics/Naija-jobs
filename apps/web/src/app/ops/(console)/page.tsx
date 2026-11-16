@@ -34,7 +34,7 @@ export default async function OpsPage() {
     service.funnel(24).catch(() => null),
   ]);
 
-  const { health, pipeline, recommendations, notifications, sources, scheduler } = overview;
+  const { health, pipeline, recommendations, sources, scheduler } = overview;
 
   return (
     <div className="max-w-6xl space-y-5">
@@ -105,7 +105,6 @@ export default async function OpsPage() {
             <Metric label="Enriched" value={pipeline.enriched} />
             <Metric label="Matched" value={pipeline.matched} />
             <Metric label="Recommended" value={pipeline.recommended} />
-            <Metric label="Notified" value={pipeline.notified} hint="today" />
             <Metric label="Duplicates" value={pipeline.duplicates} />
             <Metric
               label="Stale"
@@ -125,20 +124,6 @@ export default async function OpsPage() {
               label="Avg confidence"
               value={`${Math.round(recommendations.averageConfidence * 100)}%`}
             />
-          </div>
-
-          <h2 className="mb-2 mt-4 text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--muted)' }}>
-            Notifications
-          </h2>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <Metric label="Alerts" value={notifications.alertsToday} hint="today" />
-            <Metric label="Digests" value={notifications.digestsToday} hint="today" />
-            <Metric
-              label="Failures"
-              value={notifications.failures}
-              tone={notifications.failures > 0 ? 'danger' : undefined}
-            />
-            <Metric label="Suppressed" value={notifications.suppressed} hint="today" />
           </div>
 
           <h2 className="mb-2 mt-4 text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--muted)' }}>

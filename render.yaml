@@ -47,17 +47,6 @@ services:
       - key: AI_EMBEDDING_API_KEY
         sync: false
 
-      - key: RESEND_API_KEY
-        sync: false
-      - key: NOTIFICATION_FROM_EMAIL
-        sync: false
-      - key: NOTIFICATION_TO_EMAIL
-        sync: false
-
-      # False, deliberately. The point of this deployment is email arriving.
-      - key: NOTIFICATION_DRY_RUN
-        value: "false"
-
       # Required in production; the process refuses to boot without them.
       - key: AUTH_SECRET
         generateValue: true

@@ -4,7 +4,6 @@ import { QUEUE_NAMES } from '@job-intel/queue';
 import { getOpsContext } from '@/lib/ops';
 import { getServerContext } from '@/lib/db';
 import { getRecommendationContext } from '@/lib/recommendations';
-import { getNotificationContext } from '@/lib/notifications';
 import { getMatchingContext } from '@/lib/matching';
 import { guardMutation } from '@/lib/auth';
 import { apiError, handler, parseBody } from '@/lib/api';
@@ -88,7 +87,7 @@ export function POST(request: Request) {
           action: 'pipeline.dry_run',
           actor,
           target: report.runId,
-          after: { wouldNotify: report.wouldNotify, wouldRecommend: report.wouldRecommend },
+          after: { wouldNotify: report.wouldShortlist, wouldRecommend: report.wouldRecommend },
           reason: body.reason ?? null,
           requestId: guard.requestId,
         });
@@ -224,27 +223,6 @@ export function POST(request: Request) {
         return NextResponse.json({ ok: true, queue: body.queue, jobId: body.jobId });
       }
 
-      // ── Outward-facing: creates a real email ─────────────────────────────
-      case 'generate_digest': {
-        const notification = await getNotificationContext();
-        if (!notification.profileId) {
-          return apiError(409, 'NO_PROFILE', 'No active candidate profile');
-        }
-
-        const result = await notification.service.processCandidate(notification.profileId, {
-          forceDigest: true,
-          reason: body.reason ?? 'manual digest',
-        });
-        await repository.recordAudit({
-          action: 'digest.generated',
-          actor,
-          target: notification.profileId,
-          after: { digestSent: result.digestSent, jobs: result.digestJobs },
-          reason: body.reason ?? null,
-          requestId: guard.requestId,
-        });
-        return NextResponse.json({ ok: true, result });
-      }
 
       default:
         return apiError(400, 'UNKNOWN_ACTION', 'Unrecognised action');

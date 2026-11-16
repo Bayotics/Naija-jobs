@@ -83,14 +83,8 @@ export default async function DashboardPage() {
           <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
             <dt style={{ color: 'var(--muted)' }}>Minimum match score</dt>
             <dd className="tabular">{config.matching.minimumScore}</dd>
-            <dt style={{ color: 'var(--muted)' }}>Instant notify at</dt>
-            <dd className="tabular">{config.matching.instantNotifyScore}</dd>
-            <dt style={{ color: 'var(--muted)' }}>Notifications</dt>
-            <dd>
-              <Badge tone={config.notifications.enabled ? 'ok' : 'neutral'}>
-                {config.notifications.enabled ? 'enabled' : 'disabled'}
-              </Badge>
-            </dd>
+            <dt style={{ color: 'var(--muted)' }}>Exceptional at</dt>
+            <dd className="tabular">{config.matching.exceptionalScore}</dd>
             <dt style={{ color: 'var(--muted)' }}>AI matching</dt>
             <dd>
               <Badge tone={config.ai.enabled ? 'ok' : 'neutral'}>

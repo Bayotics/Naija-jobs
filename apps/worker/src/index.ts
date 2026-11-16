@@ -21,7 +21,6 @@ import {
   ApplicationRepository,
   CandidateRepository,
   ConfigRepository,
-  NotificationIntelligenceRepository,
   SearchConfigRepository,
   EnrichmentRepository,
   EventRepository,
@@ -40,11 +39,9 @@ import { hostname } from 'node:os';
 import { createExecutionEngine, type ExecutionEngine } from './execution-engine';
 import {
   ApplicationService,
-  NotificationIntelligenceService,
   ResumeService,
   SearchConfigService,
   registerApplicationJobs,
-  registerNotificationIntelligenceJobs,
   registerResumeJobs,
   registerSearchConfigJobs,
 } from '@job-intel/discovery';
@@ -106,7 +103,6 @@ async function start(): Promise<Runtime> {
   const resolved = await config.get();
   logger.info('Configuration resolved', {
     minimumScore: resolved.matching.minimumScore,
-    notificationsEnabled: resolved.notifications.enabled,
     aiEnabled: resolved.ai.enabled,
   });
 
@@ -182,50 +178,6 @@ async function start(): Promise<Runtime> {
 
   registerApplicationJobs({ service: applicationService, queue, logger });
 
-  /*
-   * Notification intelligence.
-   *
-   * Given a link probe here and nowhere else: reachability checks make outbound
-   * requests to arbitrary employer sites, which belongs in a background process
-   * rather than on a page render. The probe is the SSRF-hardened client, so the
-   * system has exactly one code path that follows a redirect from untrusted
-   * content.
-   */
-  const notificationService = new NotificationIntelligenceService({
-    notifications: new NotificationIntelligenceRepository(handle.db),
-    applications: new ApplicationRepository(handle.db),
-    matches: new MatchRepository(handle.db),
-    jobs: new JobRepository(handle.db),
-    enrichments: new EnrichmentRepository(handle.db),
-    candidates: new CandidateRepository(handle.db),
-    logger,
-    events,
-    linkProbe: async (url) => {
-      try {
-        /*
-         * `getText` rather than a HEAD.
-         *
-         * Many employer sites answer HEAD with a 405 or a bare 200 that says
-         * nothing about whether the posting is still there, and the client's
-         * redirect handling — the part that matters for deciding whether a link
-         * still points at a job — only runs on a real request.
-         */
-        const response = await http.getText(url);
-
-        return {
-          status: response.status,
-          finalUrl: response.url,
-          // The client follows redirects itself; a changed URL means it did.
-          redirects: response.url === url ? 0 : 1,
-        };
-      } catch {
-        // A failed probe is not a failed link — the caller records `unverified`.
-        return null;
-      }
-    },
-  });
-
-  registerNotificationIntelligenceJobs({ service: notificationService, queue, logger });
 
   /*
    * Search configuration.

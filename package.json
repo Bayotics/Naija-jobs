@@ -29,8 +29,6 @@
     "enrich": "pnpm --filter @job-intel/discovery discover -- --enrich",
     "match": "pnpm --filter @job-intel/discovery match",
     "recommend": "pnpm --filter @job-intel/discovery recommend",
-    "preview:email": "pnpm --filter @job-intel/notifications preview",
-    "notify": "pnpm --filter @job-intel/discovery notify",
     "ops": "pnpm --filter @job-intel/discovery ops",
     "probe": "pnpm --filter @job-intel/discovery probe",
     "bootstrap:search": "pnpm --filter @job-intel/discovery bootstrap:search",

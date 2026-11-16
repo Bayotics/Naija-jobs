@@ -70,7 +70,6 @@ export default async function OpsRunsPage() {
                 <td className="tabular px-3 py-2 text-xs">{run.jobsDiscovered}</td>
                 <td className="tabular px-3 py-2 text-xs">{run.jobsMatched}</td>
                 <td className="tabular px-3 py-2 text-xs">{run.jobsRecommended}</td>
-                <td className="tabular px-3 py-2 text-xs">{run.notificationsGenerated}</td>
                 <td className="tabular px-3 py-2 text-xs" style={{ color: 'var(--muted)' }}>
                   {run.durationMs === null ? '—' : `${Math.round(run.durationMs / 1000)}s`}
                 </td>

@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import {
   EDITABLE_FIELDS,
   HIGH_RISK_FIELDS,
-  OVERRIDE_PRECEDENCE,
   PRECEDENCE_RANK,
   REMOTE_PREFERENCE_ACCEPTS,
   candidatePreferencesSchema,
@@ -677,10 +676,6 @@ describe('confirmation policy', () => {
         confirmEverything: false,
       }),
     ).toBe(true);
-  });
-
-  it('resolves override precedence deterministically', () => {
-    expect(OVERRIDE_PRECEDENCE[0]).toBe('never_alert');
   });
 });
 

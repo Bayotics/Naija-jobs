@@ -39,7 +39,7 @@ export default async function OpsJobDebuggerPage({
   if (!inspection) notFound();
 
   const view = buildJobInspection(inspection);
-  const { job, fields, duplicates, match, recommendation, notifications, events } = view;
+  const { job, fields, duplicates, match, recommendation, events } = view;
 
   return (
     <div className="max-w-6xl space-y-5">
@@ -355,15 +355,15 @@ export default async function OpsJobDebuggerPage({
         )}
       </Card>
 
-      {/* ── Notification debugger ───────────────────────────────────────── */}
-      <Card
-        title="Notification"
-        description="The direct answer to: why did this not reach my inbox?"
-      >
-        {recommendation && (
-          <div className="mb-3 flex flex-wrap items-center gap-2 text-xs">
+      {/* ── Why this ranks where it does ────────────────────────────────── */}
+      {recommendation && (
+        <Card
+          title="Surfacing"
+          description="The direct answer to: why is this not near the top of my list?"
+        >
+          <div className="flex flex-wrap items-center gap-2 text-xs">
             <Badge tone={recommendation.notificationEligible ? 'ok' : 'warn'}>
-              {recommendation.notificationEligible ? 'notification-eligible' : 'not eligible'}
+              {recommendation.notificationEligible ? 'shortlisted' : 'not shortlisted'}
             </Badge>
             {recommendation.notificationBlockers.map((blocker) => (
               <span key={blocker} style={{ color: 'var(--muted)' }}>
@@ -371,42 +371,8 @@ export default async function OpsJobDebuggerPage({
               </span>
             ))}
           </div>
-        )}
-
-        {notifications.length === 0 ? (
-          <p className="text-xs" style={{ color: 'var(--muted)' }}>
-            No notification decision has been recorded for this job. A job that was never ranked, or
-            that was ranked below the trace threshold, produces no decision record.
-          </p>
-        ) : (
-          <Table head={['Decided', 'Outcome', 'Priority', 'Score', 'Reason']}>
-            {notifications.map((decision, index) => (
-              <tr key={index} className="border-b" style={{ borderColor: 'var(--border)' }}>
-                <td className="tabular px-3 py-1.5 text-xs" style={{ color: 'var(--muted)' }}>
-                  {decision.decidedAt.toISOString().slice(0, 16).replace('T', ' ')}
-                </td>
-                <td className="px-3 py-1.5">
-                  <Badge tone={decision.outcome.startsWith('SENT') ? 'ok' : 'warn'}>
-                    {decision.outcome}
-                  </Badge>
-                </td>
-                <td className="px-3 py-1.5 text-xs">{decision.priority ?? '—'}</td>
-                <td className="tabular px-3 py-1.5 text-xs">
-                  {decision.recommendationScore === null
-                    ? '—'
-                    : decision.recommendationScore.toFixed(1)}
-                </td>
-                <td className="px-3 py-1.5 text-[11px]" style={{ color: 'var(--muted)' }}>
-                  {decision.reason}
-                  {decision.deferredUntil && (
-                    <> · deferred until {decision.deferredUntil.toISOString().slice(0, 16)}</>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </Table>
-        )}
-      </Card>
+        </Card>
+      )}
 
       <Card title="Events" description="Everything this job triggered, newest first.">
         {events.length === 0 ? (

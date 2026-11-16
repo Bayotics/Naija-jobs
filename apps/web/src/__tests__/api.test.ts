@@ -63,7 +63,6 @@ const sourceById = await import('../app/api/v1/sources/[id]/route');
 const sourceRuns = await import('../app/api/v1/source-runs/route');
 const applications = await import('../app/api/v1/applications/route');
 const matches = await import('../app/api/v1/matches/route');
-const notifications = await import('../app/api/v1/notifications/route');
 const opsOverview = await import('../app/api/v1/ops/overview/route');
 const opsJobs = await import('../app/api/v1/ops/jobs/route');
 const opsActions = await import('../app/api/v1/ops/actions/route');
@@ -442,13 +441,6 @@ describe('API routes', () => {
       expect(body).toMatchObject({ items: [], total: 0, limit: 50, offset: 0 });
     });
 
-    it('/notifications reports whether delivery is switched off', async () => {
-      const res = await notifications.GET();
-      expect(res.status).toBe(200);
-
-      const body = await res.json();
-      expect(body).toMatchObject({ items: [], total: 0, enabled: false });
-    });
   });
 
   /*
@@ -494,7 +486,6 @@ describe('API routes', () => {
         enriched: 0,
         matched: 0,
         recommended: 0,
-        notified: 0,
       });
       // The funnel exists and is all zeros: an empty shape, not a missing one.
       expect(body.funnel.steps.every((step: { count: number }) => step.count === 0)).toBe(true);

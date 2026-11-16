@@ -350,14 +350,14 @@ describe('24/7 simulation (Part 50)', () => {
     }
 
     await queue.enqueue(
-      { type: 'SEND_NOTIFICATION', key: ['deadline'], priority: 'CRITICAL' },
+      { type: 'RANK_JOBS', key: ['deadline'], priority: 'CRITICAL' },
       clock.now(),
     );
 
     const claimed = await queue.claim({ workerId: 'w', limit: 1, now: clock.now() });
 
     /* The deadline notification is claimed first despite arriving last. */
-    expect(claimed[0]!.type).toBe('SEND_NOTIFICATION');
+    expect(claimed[0]!.type).toBe('RANK_JOBS');
   }, 60_000);
 
   it('stops scanning a disabled source and leaves the rest running', async () => {
@@ -429,7 +429,7 @@ describe('24/7 simulation (Part 50)', () => {
     for (let i = 0; i < 3; i += 1) {
       await queue.enqueue(
         {
-          type: 'SEND_NOTIFICATION',
+          type: 'RANK_JOBS',
           key: ['job-42', 'deadline'],
           priority: 'CRITICAL',
         },

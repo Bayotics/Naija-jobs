@@ -29,10 +29,10 @@ describe('ConfigRepository', () => {
   it('stores leaves so unrelated settings do not clobber each other', async () => {
     // Two operators editing different keys under the same section must both win.
     await repo.set('matching.minimumScore', 60);
-    await repo.set('matching.instantNotifyScore', 95);
+    await repo.set('matching.exceptionalScore', 95);
 
     const all = (await repo.getAll()) as { matching: Record<string, unknown> };
-    expect(all.matching).toEqual({ minimumScore: 60, instantNotifyScore: 95 });
+    expect(all.matching).toEqual({ minimumScore: 60, exceptionalScore: 95 });
   });
 
   it('upserts on repeated writes to the same key', async () => {

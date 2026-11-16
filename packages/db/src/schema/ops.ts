@@ -53,7 +53,6 @@ export const pipelineRuns = pgTable(
     jobsProcessed: integer('jobs_processed').notNull().default(0),
     jobsMatched: integer('jobs_matched').notNull().default(0),
     jobsRecommended: integer('jobs_recommended').notNull().default(0),
-    notificationsGenerated: integer('notifications_generated').notNull().default(0),
     duplicatesDetected: integer('duplicates_detected').notNull().default(0),
 
     errorCount: integer('error_count').notNull().default(0),

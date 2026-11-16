@@ -8,9 +8,6 @@ import {
   FEEDBACK_ACTIONS,
   JOB_STATUSES,
   MATCH_STAGES,
-  NOTIFICATION_CHANNELS,
-  NOTIFICATION_KINDS,
-  NOTIFICATION_STATUSES,
   RECOMMENDATIONS,
   RECOMMENDATION_CATEGORIES,
   DUPLICATE_TIERS,
@@ -19,10 +16,6 @@ import {
   RECOMMENDATION_TIERS,
   SOURCE_AUTHORITY_LEVELS,
   VERIFICATION_OUTCOMES,
-  ALERT_PRIORITIES,
-  DELIVERY_EVENTS,
-  NOTIFICATION_DECISIONS,
-  NOTIFICATION_TYPES,
   AI_OPERATIONS,
   AUDIT_ACTIONS,
   PIPELINE_RUN_STATUSES,
@@ -80,9 +73,6 @@ export const rejectionReasonEnum = pgEnum('rejection_reason', REJECTION_REASONS)
 export const feedbackActionEnum = pgEnum('feedback_action', FEEDBACK_ACTIONS);
 export const applicationStateEnum = pgEnum('application_state', APPLICATION_STATES);
 
-export const notificationChannelEnum = pgEnum('notification_channel', NOTIFICATION_CHANNELS);
-export const notificationKindEnum = pgEnum('notification_kind', NOTIFICATION_KINDS);
-export const notificationStatusEnum = pgEnum('notification_status', NOTIFICATION_STATUSES);
 
 export const systemEventNameEnum = pgEnum('system_event_name', SYSTEM_EVENTS);
 export const systemEventSeverityEnum = pgEnum('system_event_severity', SYSTEM_EVENT_SEVERITIES);
@@ -106,15 +96,11 @@ export const recommendationTierEnum = pgEnum('recommendation_tier', RECOMMENDATI
 // ── Notification engine ─────────────────────────────────────────────────────
 
 /** Extensible by adding a member here plus a template. No pipeline change. */
-export const notificationTypeEnum = pgEnum('notification_type', NOTIFICATION_TYPES);
-export const alertPriorityEnum = pgEnum('alert_priority', ALERT_PRIORITIES);
 /**
  * Every outcome a notification candidate can reach, suppressions included.
  * Stored as an enum rather than free text so "show me everything suppressed by
  * quiet hours" is an indexed query, not a LIKE scan.
  */
-export const notificationDecisionEnum = pgEnum('notification_decision', NOTIFICATION_DECISIONS);
-export const deliveryEventEnum = pgEnum('delivery_event', DELIVERY_EVENTS);
 
 // ── Operations ──────────────────────────────────────────────────────────────
 

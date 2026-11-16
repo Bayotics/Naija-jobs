@@ -136,29 +136,28 @@ describe('the funnel', () => {
         eligible: 430,
         matched: 430,
         recommended: 87,
-        notified: 14,
       },
       24,
       NOW,
     );
 
-    expect(funnel.steps).toHaveLength(8);
+    expect(funnel.steps).toHaveLength(7);
     expect(funnel.steps[0]?.retention).toBeNull();
     expect(funnel.steps[1]?.retention).toBeCloseTo(0.62, 2);
 
-    // Selection stages are excluded: notification removing 84% is the system
-    // working, not a finding. The useful answer is the processing step.
-    // Hard constraints removed 80% of quality-passing jobs — a larger drop
-    // than quality analysis itself, and exactly the finding worth surfacing.
+    // Selection stages are excluded: the shortlist keeping 20% of matches is
+    // the system working, not a finding. The useful answer is the processing
+    // step. Hard constraints removed 80% of quality-passing jobs — a larger
+    // drop than quality analysis itself, and exactly what is worth surfacing.
     expect(biggestDrop(funnel)?.step.key).toBe('eligible');
-    expect(biggestDrop(funnel, { includeSelective: true })?.step.key).toBe('notified');
+    expect(biggestDrop(funnel, { includeSelective: true })?.step.key).toBe('recommended');
   });
 
   it('reports zeros for an empty system rather than inventing a shape', () => {
     const funnel = buildFunnel(
       {
         discovered: 0, unique: 0, enriched: 0, qualityPassed: 0,
-        eligible: 0, matched: 0, recommended: 0, notified: 0,
+        eligible: 0, matched: 0, recommended: 0,
       },
       24,
       NOW,
@@ -174,7 +173,7 @@ describe('the funnel', () => {
     const funnel = buildFunnel(
       {
         discovered: 10, unique: 10, enriched: 10, qualityPassed: 10,
-        eligible: 300, matched: 300, recommended: 20, notified: 2,
+        eligible: 300, matched: 300, recommended: 20,
       },
       1,
       NOW,

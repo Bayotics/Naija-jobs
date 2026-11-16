@@ -32,7 +32,7 @@ export const dynamic = 'force-dynamic';
 /** The tunables worth exposing. Each is validated by the app-config schema. */
 const TUNABLES: Array<{ key: string; label: string; help: string; type: 'number' | 'boolean' }> = [
   { key: 'matching.minimumScore', label: 'Minimum match score', help: 'Below this, a job is never surfaced.', type: 'number' },
-  { key: 'matching.instantNotifyScore', label: 'Instant-alert score', help: 'At or above this, alert immediately rather than batching.', type: 'number' },
+  { key: 'matching.exceptionalScore', label: 'Exceptional score', help: 'At or above this, a job is flagged exceptional and pinned to the top of the list.', type: 'number' },
   { key: 'matching.digestScore', label: 'Digest score', help: 'Threshold to enter a digest.', type: 'number' },
   { key: 'matching.minimumConfidence', label: 'Minimum confidence', help: '0–1. Low-confidence matches are held back.', type: 'number' },
   { key: 'pipeline.maxJobAgeDays', label: 'Max job age (days)', help: 'Postings older than this are not ingested.', type: 'number' },

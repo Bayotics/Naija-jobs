@@ -69,7 +69,6 @@ describe('OpsRepository', () => {
       enriched: 0,
       matched: 0,
       recommended: 0,
-      notified: 0,
       duplicates: 0,
       stale: 0,
     });

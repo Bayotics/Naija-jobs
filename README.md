@@ -1,14 +1,19 @@
 # Naija Jobs
 
-**Why refresh Jobberman at 2am when a bot can do it and email you the ones
-that actually fit?**
+**Why refresh Jobberman at 2am when a bot can do it and have the good ones
+waiting for you, ranked?**
 
 This thing works the Nigerian job boards while you sleep. It reads the
 listings, throws out everything that isn't your field, scores what's left
-against your real profile, and drops the good ones in your inbox with a reason
-attached.
+against your real profile, and puts the good ones at the top of your dashboard
+with a reason attached.
 
-You wake up. You check your email. There are jobs there. That's the product.
+You wake up. You open the dashboard. The best jobs are already at the top.
+That's the product.
+
+**No email.** Not "email off by default" — there is no email in this system at
+all. No provider, no key, no address, nothing to configure and nothing that
+can land in your inbox at 3am. The ranked list *is* the delivery.
 
 It's free. It stays free. I'm not selling this, there's no waitlist, there's no
 "pro tier". I built it because job hunting in Nigeria is a full-time job on its
@@ -47,7 +52,7 @@ half of them don't state one and you'd rather see it than not.
   arrangement
 - Flags the scams. "Pay ₦5,000 registration fee" is not a job offer, and it
   knows that
-- Emails you a digest explaining *why* each one matched, not just a percentage
+- Shows you *why* each one ranks where it does, not just a percentage
 - **Never applies for you.** No auto-submit, no bot messaging recruiters. It
   prepares, you decide. Your name stays yours
 
@@ -117,10 +122,8 @@ Open `.env` and fill in:
 
 - `DATABASE_URL` — free Postgres from [neon.tech](https://neon.tech), two minutes
 - `ANTHROPIC_API_KEY` and `AI_EMBEDDING_API_KEY` — the brains
-- `RESEND_API_KEY`, `NOTIFICATION_FROM_EMAIL`, `NOTIFICATION_TO_EMAIL` — the email bit
 
-Leave `NOTIFICATION_DRY_RUN=true` for now. Nothing sends while it's true, which
-is what you want until you've seen what it picks.
+That's the lot. There is no email configuration because there is no email.
 
 ### 3. Set up the database
 
@@ -157,11 +160,11 @@ preferences, the fields you actually want.
 Don't skip this. The seed data is a made-up person and the system will happily
 find jobs for *them*.
 
-### 6. Turn on email
+### 6. Let it run
 
-Once **Matches** looks right, set `NOTIFICATION_DRY_RUN=false` and restart the
-worker. Check **Notification Settings** and set your timezone — Africa/Lagos —
-unless you enjoy a 4am digest.
+That's it. The worker checks the boards hourly and keeps the dashboard sorted.
+Open **Recommendations** whenever you feel like looking; nothing will chase
+you.
 
 ---
 
@@ -222,7 +225,6 @@ Fork it, break it, make it yours. That's what it's here for.
 pnpm discover      # go and find jobs right now
 pnpm match         # score everything against your profile
 pnpm recommend     # rank them
-pnpm notify        # run the email decision (respects dry run)
 pnpm probe         # check every source is still reachable
 pnpm prune:jobs    # delete stored jobs that don't match your profile
 pnpm test          # 1,494 tests
@@ -238,11 +240,9 @@ when you're curious, or when something looks off.
 **No jobs?** Check the worker terminal, then **Sources** in the dashboard.
 Anything restricted says so, with the reason.
 
-**Jobs but no email?** Almost always one of three: `NOTIFICATION_DRY_RUN` is
-still `true`, no email address in Notification Settings, or your match
-threshold is higher than anything you've actually matched. That last one is
-sneaky — look at **Matches**, see what your top score really is, and set the
-threshold below it.
+**Jobs but nothing in Recommendations?** Your match threshold is probably
+higher than anything you've actually matched. Look at **Matches**, see what
+your top score really is, and set the threshold below it.
 
 **Getting jobs you can't take?** Check your location settings. Nigeria should
 be the only country listed.
@@ -268,8 +268,8 @@ This is a personal project I built and then cleaned up enough to share. It's
 not enterprise software. Job boards change their HTML and break connectors.
 Some postings are strange. Some recruiters are stranger.
 
-But it does the actual job: it works the boards while you sleep, and the email
-that shows up in the morning is real.
+But it does the actual job: it works the boards while you sleep, and the list
+waiting for you in the morning is real.
 
 MIT licensed. Free forever. Not commercialising it, ever.
 

@@ -70,22 +70,6 @@ export const envSchema = z
     AI_EMBEDDING_PROVIDER: z.enum(['openai', 'voyage', 'cohere']).optional(),
     AI_EMBEDDING_API_KEY: optionalNonEmpty,
 
-    // ── Notifications (prompt 17) ───────────────────────────────────────────
-    RESEND_API_KEY: optionalNonEmpty,
-    RESEND_WEBHOOK_SECRET: optionalNonEmpty,
-    /*
-     * Runs the whole notification pipeline and stops before sending.
-     *
-     * Required for testing in production: scoring, suppression, templating and
-     * link validation all execute, and the payload is retained for inspection.
-     */
-    NOTIFICATION_DRY_RUN: z
-      .string()
-      .optional()
-      .transform((value) => value === 'true' || value === '1'),
-    NOTIFICATION_FROM_EMAIL: z.string().trim().email().optional(),
-    NOTIFICATION_TO_EMAIL: z.string().trim().email().optional(),
-
     // ── Crawling identity ───────────────────────────────────────────────────
     CRAWLER_USER_AGENT: z
       .string()
@@ -159,7 +143,6 @@ const HINTS: Record<string, string> = {
   AUTH_SECRET: 'Generate with: openssl rand -base64 32',
   OPS_PASSWORD: 'The console login credential. Must differ from AUTH_SECRET.',
   FEEDBACK_TOKEN_SECRET: 'Generate with: openssl rand -base64 32',
-  NOTIFICATION_FROM_EMAIL: 'Must be a verified sender on your email provider',
 };
 
 /**

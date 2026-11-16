@@ -260,11 +260,11 @@ export class RelevanceProvider {
  *
  * The cadence now matches the rate work actually arrives. Nothing waits
  * meaningfully longer: a job discovered at noon is still scored and ranked
- * inside a couple of hours, well before the daily digest that decides whether
- * anyone hears about it.
+ * inside a couple of hours, which is well inside the time anyone takes to
+ * open the dashboard and look.
  */
 const PIPELINE_SCHEDULES: ReadonlyArray<{
-  taskType: 'ENRICH_JOB' | 'MATCH_JOB' | 'NOTIFICATION_EVALUATION';
+  taskType: 'ENRICH_JOB' | 'MATCH_JOB' | 'RANK_JOBS';
   intervalMinutes: number;
   why: string;
 }> = [
@@ -279,9 +279,9 @@ const PIPELINE_SCHEDULES: ReadonlyArray<{
     why: 'Scores whatever enrichment has finished. Paced to what discovery actually produces.',
   },
   {
-    taskType: 'NOTIFICATION_EVALUATION',
+    taskType: 'RANK_JOBS',
     intervalMinutes: 60,
-    why: 'Ranks, then decides what is worth an email. Hourly; the digest window does the real pacing.',
+    why: 'Ranks what matching has scored. Hourly, so the dashboard is never more than an hour behind.',
   },
 ];
 

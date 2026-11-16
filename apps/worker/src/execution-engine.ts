@@ -22,7 +22,6 @@ import { RelevanceProvider, reconcileConfiguration } from './configuration-bridg
 import {
   runEnrichment,
   runMatching,
-  runNotification,
   runRecommendation,
   type StageDependencies,
 } from './pipeline-stages';
@@ -332,19 +331,17 @@ function registerHandlers(
     if (result.processed > 0) ctx.logger.info('Match pass complete', result.detail);
   });
 
-  worker.register('NOTIFICATION_EVALUATION', async (_task, ctx) => {
+  worker.register('RANK_JOBS', async (_task, ctx) => {
     /*
-     * Ranking runs immediately before the notification decision rather than on
-     * its own schedule. The decision reads recommendation scores, and a stale
-     * ranking would email yesterday's best matches while today's sit unscored.
+     * The last stage in the pipeline, and the one the dashboard reads.
+     *
+     * This used to rank and then decide what to email. There is no email now:
+     * the ranking *is* the delivery, so the pass ends here and the ordered
+     * list the candidate opens is its only output.
      */
     const ranked = await runRecommendation(deps.stages);
-    const notified = await runNotification(deps.stages);
 
-    ctx.logger.info('Notification pass complete', {
-      ranked: ranked.processed,
-      ...notified.detail,
-    });
+    if (ranked.processed > 0) ctx.logger.info('Ranking pass complete', ranked.detail);
   });
 
   worker.register('CLEANUP', async (_task, ctx) => {

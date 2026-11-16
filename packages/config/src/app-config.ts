@@ -31,7 +31,8 @@ export const appConfigSchema = z.object({
       /** Below this, a job is never surfaced. */
       minimumScore: z.number().min(0).max(100).default(50),
       /** At or above this, notify immediately rather than batching to a digest. */
-      instantNotifyScore: z.number().min(0).max(100).default(85),
+      /** At or above this a job is marked exceptional and pinned to the top. */
+      exceptionalScore: z.number().min(0).max(100).default(85),
       digestScore: z.number().min(0).max(100).default(65),
       minimumConfidence: z.number().min(0).max(1).default(0.4),
     })
@@ -52,16 +53,6 @@ export const appConfigSchema = z.object({
       minimumQualityScore: z.number().min(0).max(1).default(0.2),
       /** Consecutive absences from a source listing before presuming closed. */
       expiryAbsenceRuns: z.number().int().min(1).max(20).default(3),
-    })
-    .default({}),
-
-  notifications: z
-    .object({
-      enabled: z.boolean().default(false),
-      maxPerDay: z.number().int().min(1).max(200).default(20),
-      maxPerHour: z.number().int().min(1).max(100).default(5),
-      digestHours: z.array(z.number().int().min(0).max(23)).default([8, 18]),
-      timezone: z.string().default('UTC'),
     })
     .default({}),
 

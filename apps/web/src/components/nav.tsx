@@ -90,8 +90,6 @@ const SECTIONS: Array<{
       { href: '/opportunities', label: 'Opportunities', icon: 'opportunities' },
       { href: '/saved', label: 'Saved', icon: 'saved' },
       { href: '/applications', label: 'Applications', icon: 'applications' },
-      { href: '/notifications', label: 'Notifications', icon: 'notifications' },
-      { href: '/notifications/intelligence', label: 'Alert Intelligence', icon: 'intelligence' },
     ],
   },
   {
@@ -104,7 +102,6 @@ const SECTIONS: Array<{
       { href: '/learning', label: 'What We Learned', icon: 'learning' },
       { href: '/preferences', label: 'Preferences', icon: 'preferences' },
       { href: '/sources', label: 'Sources', icon: 'sources' },
-      { href: '/settings/notifications', label: 'Notification Settings', icon: 'alerts' },
       { href: '/ops', label: 'Operations', icon: 'operations' },
       { href: '/settings', label: 'Settings', icon: 'settings' },
     ],

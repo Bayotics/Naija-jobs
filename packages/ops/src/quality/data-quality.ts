@@ -89,7 +89,7 @@ const SPECS: MetricSpec[] = [
     key: 'missingApplicationUrl',
     label: 'No application URL',
     stage: 'enrichment',
-    detail: 'These can never be notified — there is nowhere to send you',
+    detail: 'These can never be surfaced — there is nowhere to send you',
     concernThreshold: 0.2,
   },
   {

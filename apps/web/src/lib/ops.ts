@@ -1,6 +1,5 @@
 import 'server-only';
 import {
-  NotificationRepository,
   OpsRepository,
   RecommendationRepository,
   checkDatabaseHealth,
@@ -35,14 +34,10 @@ export async function getOpsContext(): Promise<OpsContext> {
     sources: ctx.sources,
     profiles: ctx.profiles,
     recommendations: new RecommendationRepository(ctx.handle.db),
-    notifications: new NotificationRepository(ctx.handle.db),
     queue,
     logger: ctx.logger,
     events: ctx.events,
     checkDatabase: () => checkDatabaseHealth(ctx.handle.db),
-    // Reported honestly: the in-memory provider shows as degraded, not healthy,
-    // because "captured" is not "sent".
-    emailProviderId: ctx.env.RESEND_API_KEY ? 'resend' : 'memory',
     aiEnabled: config.ai.enabled,
     aiModel: config.ai.triageModel,
     dailyBudgetUsd: config.ai.dailyBudgetUsd,

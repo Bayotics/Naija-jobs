@@ -1,10 +1,10 @@
 import type { Funnel, FunnelStep } from '@job-intel/contracts';
 
 /**
- * The discovery-to-notification funnel.
+ * The discovery-to-shortlist funnel.
  *
- * `10,000 discovered → 14 notified` is only alarming if you cannot see where
- * the other 9,986 went. Each step carries its retention against the previous
+ * `10,000 discovered → 14 shortlisted` is only alarming if you cannot see
+ * where the other 9,986 went. Each step carries its retention against the previous
  * one, so the place the corpus collapses is a number on the screen rather than
  * something to be inferred.
  *
@@ -22,13 +22,12 @@ export interface FunnelCounts {
   eligible: number;
   matched: number;
   recommended: number;
-  notified: number;
 }
 
 /**
  * `selective: true` marks a step whose narrowness is the *point*.
  *
- * Without this, "biggest drop" always reports the final step: notification is
+ * Without this, "biggest drop" always reports the final step: the shortlist is
  * deliberately the most selective thing in the system, so it always removes the
  * largest share. Reporting that every time is noise dressed as a finding — the
  * useful question is where the corpus collapsed *unexpectedly*, which is a
@@ -49,10 +48,9 @@ const STEPS: Array<{
   {
     key: 'recommended',
     label: 'Recommended',
-    detail: 'above your recommendation threshold',
+    detail: 'above your recommendation threshold — these are what the dashboard shows first',
     selective: true,
   },
-  { key: 'notified', label: 'Notified', detail: 'actually emailed', selective: true },
 ];
 
 export function buildFunnel(counts: FunnelCounts, windowHours: number, now = new Date()): Funnel {

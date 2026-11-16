@@ -17,7 +17,6 @@ import { jobEnrichments } from '../schema/enrichment';
 import { jobMatches } from '../schema/matching';
 import { jobDuplicates, jobRecommendations, jobSignals } from '../schema/recommendation';
 import { jobSourceRuns, jobSources } from '../schema/sources';
-import { notificationChannelDeliveries, notificationDecisions, notificationEvents } from '../schema/notification-engine';
 import { systemEvents } from '../schema/system';
 
 /**
@@ -83,7 +82,6 @@ export class OpsRepository {
         jobsProcessed: number;
         jobsMatched: number;
         jobsRecommended: number;
-        notificationsGenerated: number;
         duplicatesDetected: number;
         errorCount: number;
         warningCount: number;
@@ -223,20 +221,6 @@ export class OpsRepository {
         )[0]?.count ?? 0
       : 0;
 
-    const notified = profileId
-      ? (
-          await this.db
-            .select({ count: sql<number>`count(*)::int` })
-            .from(notificationEvents)
-            .where(
-              and(
-                eq(notificationEvents.profileId, profileId),
-                gte(notificationEvents.createdAt, today),
-              ),
-            )
-        )[0]?.count ?? 0
-      : 0;
-
     return {
       discoveredToday: discovery?.today ?? 0,
       discoveredThisHour: discovery?.thisHour ?? 0,
@@ -247,7 +231,6 @@ export class OpsRepository {
       stale: stale?.stale ?? 0,
       matched,
       recommended,
-      notified,
     };
   }
 
@@ -267,52 +250,6 @@ export class OpsRepository {
       strong: row?.strong ?? 0,
       averageScore: Math.round((row?.avgScore ?? 0) * 100) / 100,
       averageConfidence: Math.round((row?.avgConfidence ?? 0) * 1000) / 1000,
-    };
-  }
-
-  async notificationStats(profileId: string) {
-    const today = startOfToday();
-
-    const [events] = await this.db
-      .select({
-        alerts: sql<number>`count(*) FILTER (WHERE ${notificationEvents.type} = 'JOB_ALERT')::int`,
-        digests: sql<number>`count(*) FILTER (WHERE ${notificationEvents.type} = 'JOB_DIGEST')::int`,
-      })
-      .from(notificationEvents)
-      .where(
-        and(eq(notificationEvents.profileId, profileId), gte(notificationEvents.createdAt, today)),
-      );
-
-    const [failures] = await this.db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(notificationChannelDeliveries)
-      .innerJoin(
-        notificationEvents,
-        eq(notificationEvents.id, notificationChannelDeliveries.eventId),
-      )
-      .where(
-        and(
-          eq(notificationEvents.profileId, profileId),
-          inArray(notificationChannelDeliveries.status, ['failed', 'bounced']),
-        ),
-      );
-
-    const [suppressed] = await this.db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(notificationDecisions)
-      .where(
-        and(
-          eq(notificationDecisions.profileId, profileId),
-          gte(notificationDecisions.decidedAt, today),
-          sql`${notificationDecisions.outcome}::text LIKE 'SUPPRESSED%'`,
-        ),
-      );
-
-    return {
-      alertsToday: events?.alerts ?? 0,
-      digestsToday: events?.digests ?? 0,
-      failures: failures?.count ?? 0,
-      suppressed: suppressed?.count ?? 0,
     };
   }
 
@@ -356,7 +293,6 @@ export class OpsRepository {
         eligible: 0,
         matched: 0,
         recommended: 0,
-        notified: 0,
       };
     }
 
@@ -375,19 +311,6 @@ export class OpsRepository {
       .from(jobRecommendations)
       .where(eq(jobRecommendations.profileId, profileId));
 
-    const [notified] = await this.db
-      .select({
-        // Distinct canonical jobs, not events: a digest carrying ten jobs is
-        // ten notified jobs, and one job in two digests is still one.
-        count: sql<number>`count(DISTINCT unnested)::int`,
-      })
-      .from(
-        sql`(SELECT unnest(${notificationEvents.canonicalJobIds}) AS unnested
-             FROM ${notificationEvents}
-             WHERE ${notificationEvents.profileId} = ${profileId}
-               AND ${notificationEvents.createdAt} >= ${since}) AS notified_jobs_expanded`,
-      );
-
     return {
       discovered: discovery?.discovered ?? 0,
       unique: discovery?.unique ?? 0,
@@ -396,7 +319,6 @@ export class OpsRepository {
       eligible: matching?.eligible ?? 0,
       matched: matching?.matched ?? 0,
       recommended: recommendation?.recommended ?? 0,
-      notified: notified?.count ?? 0,
     };
   }
 
@@ -888,23 +810,6 @@ export class OpsRepository {
         )[0] ?? null
       : null;
 
-    const decisions = profileId
-      ? await this.db
-          .select()
-          .from(notificationDecisions)
-          .where(
-            and(
-              eq(notificationDecisions.profileId, profileId),
-              or(
-                eq(notificationDecisions.jobId, jobId),
-                eq(notificationDecisions.canonicalJobId, jobId),
-              ),
-            ),
-          )
-          .orderBy(desc(notificationDecisions.decidedAt))
-          .limit(20)
-      : [];
-
     const events = await this.db
       .select()
       .from(systemEvents)
@@ -919,7 +824,6 @@ export class OpsRepository {
       duplicates,
       match,
       recommendation,
-      decisions,
       events,
     };
   }
@@ -937,7 +841,7 @@ export class OpsRepository {
    * count them would work today and stop working at ten thousand.
    */
   async recommendationAnalytics(profileId: string) {
-    const [distribution, tiers, companies, sources, outcomes] = await Promise.all([
+    const [distribution, tiers, companies, sources] = await Promise.all([
       this.db
         .select({
           bucket: sql<number>`least(9, floor(${jobRecommendations.finalScore} / 10))::int`,
@@ -984,16 +888,6 @@ export class OpsRepository {
         .where(eq(jobRecommendations.profileId, profileId))
         .groupBy(jobs.sourceId)
         .orderBy(desc(sql`count(*)`)),
-
-      this.db
-        .select({
-          outcome: notificationDecisions.outcome,
-          count: sql<number>`count(*)::int`,
-        })
-        .from(notificationDecisions)
-        .where(eq(notificationDecisions.profileId, profileId))
-        .groupBy(notificationDecisions.outcome)
-        .orderBy(desc(sql`count(*)`)),
     ]);
 
     // Every bucket present, including the empty ones — a histogram with holes
@@ -1004,7 +898,7 @@ export class OpsRepository {
       count: distribution.find((row) => row.bucket === index)?.count ?? 0,
     }));
 
-    return { buckets, tiers, companies, sources, outcomes };
+    return { buckets, tiers, companies, sources };
   }
 
   // ── Source overview ───────────────────────────────────────────────────────

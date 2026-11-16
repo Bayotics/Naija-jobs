@@ -3,7 +3,6 @@ import { revalidatePath } from 'next/cache';
 import { getOpsContext } from '@/lib/ops';
 import { getMatchingContext } from '@/lib/matching';
 import { getRecommendationContext } from '@/lib/recommendations';
-import { getNotificationContext } from '@/lib/notifications';
 import { currentSession, authConfigured } from '@/lib/auth';
 import { Badge, Card, PageHeader } from '@/components/ui';
 import { Metric } from '@/components/ops';
@@ -51,7 +50,7 @@ export default async function OpsControlPage({
       action: 'pipeline.dry_run',
       actor: who,
       target: report.runId,
-      after: { wouldNotify: report.wouldNotify, wouldRecommend: report.wouldRecommend },
+      after: { wouldShortlist: report.wouldShortlist, wouldRecommend: report.wouldRecommend },
       reason: reason ?? null,
     });
     revalidatePath('/ops/control');
@@ -103,31 +102,6 @@ export default async function OpsControlPage({
     revalidatePath('/ops/control');
   }
 
-  async function generateDigest(formData: FormData) {
-    'use server';
-    // The one action that can produce a real email. Confirmation is required.
-    if (formData.get('confirm') !== 'on') return;
-    const reason = String(formData.get('reason') ?? '').slice(0, 200) || 'manual digest';
-
-    const notification = await getNotificationContext();
-    if (!notification.profileId) return;
-
-    const { repository: repo } = await getOpsContext();
-    const who = (await currentSession())?.actor ?? 'local';
-    const result = await notification.service.processCandidate(notification.profileId, {
-      forceDigest: true,
-      reason,
-    });
-
-    await repo.recordAudit({
-      action: 'digest.generated',
-      actor: who,
-      target: notification.profileId,
-      after: { digestSent: result.digestSent, jobs: result.digestJobs },
-      reason,
-    });
-    revalidatePath('/ops/control');
-  }
 
   const dryRunSummary = await service
     .dryRun({ triggeredBy: actor, reason: 'preview' })
@@ -163,20 +137,20 @@ export default async function OpsControlPage({
             <Metric label="Would enrich" value={dryRunSummary.wouldEnrich} />
             <Metric label="Would match" value={dryRunSummary.wouldMatch} />
             <Metric label="Would recommend" value={dryRunSummary.wouldRecommend} />
-            <Metric label="Would notify" value={dryRunSummary.wouldNotify} tone="ok" />
+            <Metric label="Would shortlist" value={dryRunSummary.wouldShortlist} tone="ok" />
             <Metric label="Suppressed" value={dryRunSummary.suppressed.length} />
           </div>
         )}
 
-        {dryRunSummary && dryRunSummary.notifications.length > 0 && (
+        {dryRunSummary && dryRunSummary.shortlist.length > 0 && (
           <div className="mb-3">
-            <div className="mb-1 text-xs font-semibold">Would be emailed</div>
+            <div className="mb-1 text-xs font-semibold">Would reach the top of the list</div>
             <ul className="space-y-1 text-xs">
-              {dryRunSummary.notifications.slice(0, 8).map((notification) => (
-                <li key={notification.jobId}>
-                  <span className="font-medium">{notification.title}</span>{' '}
+              {dryRunSummary.shortlist.slice(0, 8).map((entry) => (
+                <li key={entry.jobId}>
+                  <span className="font-medium">{entry.title}</span>{' '}
                   <span style={{ color: 'var(--muted)' }}>
-                    — {notification.company} · {notification.reason}
+                    — {entry.company} · {entry.reason}
                   </span>
                 </li>
               ))}
@@ -222,18 +196,6 @@ export default async function OpsControlPage({
             note="Refreshes job signals, then re-ranks and re-diversifies."
           />
         </div>
-      </Card>
-
-      <Card
-        title="Notifications"
-        description="This can produce a real email. Confirmation is required."
-      >
-        <ConfirmForm
-          action={generateDigest}
-          label="Generate a digest now"
-          note="Runs the decision pass with the digest forced. Queues an email if anything qualifies."
-          danger
-        />
       </Card>
 
       {lastRun && (

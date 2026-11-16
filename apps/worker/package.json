@@ -22,7 +22,6 @@
     "@job-intel/resume": "workspace:*",
     "@job-intel/scheduler": "workspace:*",
     "@job-intel/matching": "workspace:*",
-    "@job-intel/notifications": "workspace:*",
     "@job-intel/recommendation": "workspace:*"
   },
   "devDependencies": {

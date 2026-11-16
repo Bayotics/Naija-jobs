@@ -19,7 +19,6 @@
     "@job-intel/discovery": "workspace:*",
     "@job-intel/enrichment": "workspace:*",
     "@job-intel/matching": "workspace:*",
-    "@job-intel/notifications": "workspace:*",
     "@job-intel/observability": "workspace:*",
     "@job-intel/ops": "workspace:*",
     "@job-intel/queue": "workspace:*",

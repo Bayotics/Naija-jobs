@@ -3,7 +3,6 @@ import { z } from 'zod';
 import { sql } from 'drizzle-orm';
 import {
   jobSourceSchema,
-  notificationPreferencesSchema,
   sourceJobDraftSchema,
   type SourceJobDraft,
 } from '@job-intel/contracts';
@@ -17,7 +16,6 @@ import {
   EventRepository,
   JobRepository,
   MatchRepository,
-  NotificationRepository,
   OpsRepository,
   ProfileRepository,
   RecommendationRepository,
@@ -34,13 +32,11 @@ import {
 import { testHttpClient } from '@job-intel/connectors/testing';
 import { HashingEmbeddingProvider } from '@job-intel/matching';
 import { makeEnrichment, makeSkills } from '@job-intel/matching/testing';
-import { MemoryEmailProvider } from '@job-intel/notifications';
 import { InMemoryQueueDriver, createEnvelope, type QueueDriver } from '@job-intel/queue';
 import { OpsService } from './ops-service';
 import { SourceRunner } from './source-runner';
 import { MatchingService } from './matching-service';
 import { RecommendationService } from './recommendation-service';
-import { NotificationService } from './notification-service';
 
 /**
  * Operations control centre, against a real database.
@@ -112,12 +108,10 @@ describe('operations control centre', () => {
       sources,
       profiles,
       recommendations: new RecommendationRepository(ctx.db),
-      notifications: new NotificationRepository(ctx.db),
       queue,
       logger,
       events: new EventRecorder(logger, new EventRepository(ctx.db)),
       checkDatabase: () => Promise.resolve({ ok: true, latencyMs: 3 }),
-      emailProviderId: 'resend',
       aiEnabled: true,
       aiModel: 'claude-haiku-4-5',
       dailyBudgetUsd: 2,
@@ -242,17 +236,6 @@ describe('operations control centre', () => {
 
       expect(component.status).toBe('degraded');
       expect(component.detail).toContain('backlog');
-    });
-
-    it('reports an unconfigured email provider as disabled and a memory one as degraded', async () => {
-      const disabled = await makeService({ emailProviderId: null }).systemHealth();
-      expect(componentOf(disabled, 'email_provider').status).toBe('disabled');
-
-      const memory = await makeService({ emailProviderId: 'memory' }).systemHealth();
-      const component = componentOf(memory, 'email_provider');
-      // "Captured" is not "sent", and the dashboard must not claim otherwise.
-      expect(component.status).toBe('degraded');
-      expect(component.detail).toContain('captured');
     });
 
     it('reports an unpriced AI model as degraded so spend is not understated', async () => {
@@ -385,7 +368,6 @@ describe('operations control centre', () => {
         enriched: 0,
         matched: 0,
         recommended: 0,
-        notified: 0,
       });
       expect(overview.recommendations.averageScore).toBe(0);
       expect(overview.scheduler.lastRunAt).toBeNull();
@@ -397,7 +379,7 @@ describe('operations control centre', () => {
   // ── Part 37: the sixteen-step control walk ────────────────────────────────
 
   describe('end-to-end control', () => {
-    it('traces one posting from source to email through the console', async () => {
+    it('traces one posting from source to the dashboard through the console', async () => {
       const service = makeService();
       const events = new EventRecorder(logger, new EventRepository(ctx.db));
 
@@ -408,7 +390,7 @@ describe('operations control centre', () => {
       // 2. Verify system health.
       const health = await service.systemHealth();
       expect(health.components.map((component) => component.component)).toEqual(
-        expect.arrayContaining(['database', 'queue', 'scheduler', 'email_provider', 'sources']),
+        expect.arrayContaining(['database', 'queue', 'scheduler', 'sources']),
       );
       expect(componentOf(health, 'database').status).toBe('healthy');
 
@@ -516,43 +498,6 @@ describe('operations control centre', () => {
       const ranking = await recommendation.rank(profileId);
       expect(ranking.ranked).toBe(1);
 
-      // 10. Observe notification decisions.
-      const notificationRepo = new NotificationRepository(ctx.db);
-      await notificationRepo.savePreferences(
-        profileId,
-        notificationPreferencesSchema.parse({
-          email: 'candidate@example.com',
-          timezone: 'UTC',
-          digestFrequency: 'hourly',
-          // Deliberately permissive: the point of this walk is that a decision
-          // is *recorded and explained*, whichever way it goes.
-          minimumRecommendationScore: 0,
-          minimumMatchScore: 0,
-          minimumConfidence: 0,
-        }),
-      );
-
-      const provider = new MemoryEmailProvider();
-      const notifications = new NotificationService({
-        notifications: notificationRepo,
-        recommendations,
-        candidates,
-        profiles,
-        sources,
-        logger,
-        events,
-        provider,
-        config: { enabled: true, appUrl: 'http://localhost:3000' },
-        preferenceSecret: 'control-test-preference-secret',
-        fromEmail: 'jobs@example.com',
-      });
-
-      const notificationRun = await notifications.processCandidate(profileId, {
-        forceDigest: true,
-        reason: 'control test',
-      });
-      expect(notificationRun.decisionsRecorded).toBeGreaterThan(0);
-
       // 11. Inspect a resulting job.
       const inspection = await ops.inspectJob(jobId, profileId);
       expect(inspection).not.toBeNull();
@@ -569,12 +514,9 @@ describe('operations control centre', () => {
       // reproducible from stored data rather than recomputed from config.
       expect(Object.keys(match!.trace.weightsUsed).length).toBeGreaterThan(0);
 
-      // 13. Inspect why it was or was not notified.
-      expect(inspection!.decisions.length).toBeGreaterThan(0);
-      const decision = inspection!.decisions[0]!;
-      expect(decision.outcome).toBeTruthy();
-      expect(decision.reason.length).toBeGreaterThan(0);
+      // 13. Inspect why it does or does not reach the top of the list.
       expect(inspection!.recommendation).not.toBeNull();
+      expect(inspection!.recommendation!.rankReasons.length).toBeGreaterThan(0);
 
       // 14. Inspect queue statistics.
       const finalCounts = await service.queueCounts();
@@ -608,7 +550,6 @@ describe('operations control centre', () => {
           jobsDiscovered: sourceResult.stats.jobsDiscovered,
           jobsMatched: matchRun.matched,
           jobsRecommended: ranking.ranked,
-          notificationsGenerated: notificationRun.digestSent ? 1 : 0,
         },
       });
 
@@ -654,12 +595,12 @@ describe('operations control centre', () => {
       expect(entry?.reason).toBe('rate limited upstream');
     });
 
-    it('records a dry run without sending or writing job state', async () => {
+    it('records a dry run without writing job state', async () => {
       const service = makeService();
       const report = await service.dryRun({ triggeredBy: 'tester', reason: 'threshold tuning' });
 
-      expect(report.skippedWrites).toContain('no emails sent');
-      expect(report.wouldNotify).toBe(0);
+      expect(report.skippedWrites).toContain('no job records written');
+      expect(report.wouldShortlist).toBe(0);
 
       const run = await ops.getRun(report.runId);
       expect(run?.dryRun).toBe(true);

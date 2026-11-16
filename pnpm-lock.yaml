@@ -82,9 +82,6 @@ importers:
       '@job-intel/matching':
         specifier: workspace:*
         version: link:../../packages/matching
-      '@job-intel/notifications':
-        specifier: workspace:*
-        version: link:../../packages/notifications
       '@job-intel/observability':
         specifier: workspace:*
         version: link:../../packages/observability
@@ -161,9 +158,6 @@ importers:
       '@job-intel/matching':
         specifier: workspace:*
         version: link:../../packages/matching
-      '@job-intel/notifications':
-        specifier: workspace:*
-        version: link:../../packages/notifications
       '@job-intel/observability':
         specifier: workspace:*
         version: link:../../packages/observability
@@ -359,9 +353,6 @@ importers:
       '@job-intel/matching':
         specifier: workspace:*
         version: link:../matching
-      '@job-intel/notifications':
-        specifier: workspace:*
-        version: link:../notifications
       '@job-intel/observability':
         specifier: workspace:*
         version: link:../observability
@@ -438,28 +429,6 @@ importers:
       zod:
         specifier: ^3.25.76
         version: 3.25.76
-
-  packages/notifications:
-    dependencies:
-      '@job-intel/config':
-        specifier: workspace:*
-        version: link:../config
-      '@job-intel/contracts':
-        specifier: workspace:*
-        version: link:../contracts
-      '@job-intel/core':
-        specifier: workspace:*
-        version: link:../core
-      '@job-intel/observability':
-        specifier: workspace:*
-        version: link:../observability
-      zod:
-        specifier: ^3.25.76
-        version: 3.25.76
-    devDependencies:
-      tsx:
-        specifier: ^4.19.2
-        version: 4.23.12
 
   packages/observability:
     dependencies:

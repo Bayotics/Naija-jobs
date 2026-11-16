@@ -297,7 +297,7 @@ describe('claiming and leases (Parts 5, 6)', () => {
 
   it('claims in priority order', async () => {
     await queue.enqueue({ type: 'UPDATE_ANALYTICS', key: ['low'], priority: 'LOW' });
-    await queue.enqueue({ type: 'SEND_NOTIFICATION', key: ['crit'], priority: 'CRITICAL' });
+    await queue.enqueue({ type: 'RANK_JOBS', key: ['crit'], priority: 'CRITICAL' });
     await queue.enqueue({ type: 'SOURCE_SCAN', key: ['normal'], priority: 'NORMAL' });
 
     const claimed = await queue.claim({ workerId: 'w', limit: 3 });
