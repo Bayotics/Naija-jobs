@@ -78,7 +78,7 @@ export default async function SourcesPage() {
               ))}
             </Table>
             <p className="mt-3 text-xs" style={{ color: 'var(--muted)' }}>
-              Sources are disabled until their connector is implemented (prompt 5). Enable and
+              A disabled source is one nobody has switched on, or one whose terms refuse automated access — the reason is shown against each. Enable and
               schedule them from here or via <code>PATCH /api/v1/sources/:id</code>.
             </p>
           </Card>

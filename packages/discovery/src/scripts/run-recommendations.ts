@@ -105,7 +105,7 @@ async function main(): Promise<void> {
   console.log(`considered ${ranking.considered}`);
   console.log(`ranked     ${ranking.ranked}`);
   console.log(`suppressed ${ranking.suppressed}`);
-  console.log(`notifiable ${ranking.notifiable}`);
+  console.log(`shortlisted ${ranking.notifiable}`);
   console.log(`duration   ${ranking.durationMs} ms`);
   if (ranking.ranked > 0) {
     console.log(`avg/job    ${(ranking.durationMs / ranking.ranked).toFixed(2)} ms`);
@@ -141,15 +141,15 @@ async function main(): Promise<void> {
     }
   }
 
-  // The list a digest would actually send, once per-set caps are applied.
+  // The shortlist, once the per-company and per-source caps are applied.
   const notifiable = await repository.topRecommendations({
     profileId: profile.profileId,
     limit: 50,
     notificationEligibleOnly: true,
   });
-  console.log('\n── Would be notified ──────────────────────────────');
+  console.log('\n── The shortlist ──────────────────────────────────');
   if (notifiable.length === 0) {
-    console.log('nothing passes every notification rule right now');
+    console.log('nothing clears every quality bar right now');
   } else {
     for (const row of notifiable.slice(0, service.config.notification.maxPerDigest)) {
       console.log(
@@ -157,7 +157,7 @@ async function main(): Promise<void> {
           `${row.job.title} — ${row.job.companyNameRaw}`,
       );
     }
-    console.log(`\n  ${notifiable.length} eligible, capped at ${service.config.notification.maxPerDigest} per digest`);
+    console.log(`\n  ${notifiable.length} shortlisted, capped at ${service.config.notification.maxPerDigest} shown`);
   }
 
   console.log('');

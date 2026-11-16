@@ -7,16 +7,22 @@ import { Badge, Card, EmptyState, PageHeader, Stat } from '@/components/ui';
 export const dynamic = 'force-dynamic';
 
 /**
- * The list the candidate actually reads.
+ * The list the candidate actually reads. With no email, this page *is* the
+ * product — everything the pipeline does ends here.
  *
  * Leads with the recommendation score but always shows the match score beside
  * it, because they answer different questions and hiding one makes the other
  * look wrong. A job ranked below a lower-matching one is not a bug, and the two
  * numbers side by side are what make that legible instead of alarming.
+ *
+ * Every row carries the four facts someone decides on — where, how much, what
+ * arrangement, how old — rather than making them open the posting to find out.
+ * A ranked list you have to click through to evaluate is not ranked, it is
+ * sorted.
  */
 const querySchema = z.object({
   tier: z.enum(RECOMMENDATION_TIERS).optional(),
-  notifiableOnly: z
+  shortlistOnly: z
     .enum(['true', 'false'])
     .default('false')
     .transform((v) => v === 'true'),
@@ -32,6 +38,66 @@ const TIER_TONE: Record<string, 'ok' | 'accent' | 'neutral' | 'warn' | 'danger'>
   EXCLUDED: 'danger',
   STALE: 'warn',
 };
+
+/**
+ * Salary as the posting stated it.
+ *
+ * Never converted and never inferred. A Nigerian listing quotes a monthly
+ * naira figure; rendering that as an annual dollar equivalent would be a
+ * number nobody wrote down, and "₦150,000" with no period is a different job
+ * depending on whether it is a month or a year.
+ */
+function formatSalary(job: {
+  salaryMin: string | null;
+  salaryMax: string | null;
+  salaryCurrency: string | null;
+  salaryPeriod: string | null;
+}): string | null {
+  const min = job.salaryMin ? Number(job.salaryMin) : null;
+  const max = job.salaryMax ? Number(job.salaryMax) : null;
+  if (min === null && max === null) return null;
+
+  const currency = job.salaryCurrency ?? '';
+  const money = (value: number) =>
+    `${currency}${currency ? ' ' : ''}${Math.round(value).toLocaleString('en-NG')}`;
+
+  const period = job.salaryPeriod ? `/${job.salaryPeriod.toLowerCase()}` : '';
+  const range =
+    min !== null && max !== null && min !== max
+      ? `${money(min)} – ${money(max)}`
+      : money((min ?? max) as number);
+
+  return `${range}${period}`;
+}
+
+/** Where it is, in the words a person would use. */
+function formatPlace(job: {
+  city: string | null;
+  countryCode: string | null;
+  locationRaw: string | null;
+  remoteType: string;
+}): string | null {
+  const place = job.city ?? job.locationRaw ?? (job.countryCode === 'NG' ? 'Nigeria' : null);
+  if (job.remoteType === 'remote') return place ? `Remote · ${place}` : 'Remote';
+  if (job.remoteType === 'hybrid') return place ? `Hybrid · ${place}` : 'Hybrid';
+  return place;
+}
+
+/**
+ * Age, coarsely.
+ *
+ * "3 days ago" is the decision-relevant fact on a job board; a timestamp to
+ * the minute is noise that has to be converted in the reader's head.
+ */
+function formatAge(postedAt: Date | null, firstSeenAt: Date): string {
+  const at = postedAt ?? firstSeenAt;
+  const hours = Math.floor((Date.now() - at.getTime()) / 3_600_000);
+  if (hours < 1) return 'just now';
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  return `${Math.floor(days / 30)}mo ago`;
+}
 
 export default async function RecommendationsPage({
   searchParams,
@@ -51,12 +117,12 @@ export default async function RecommendationsPage({
     return (
       <div className="max-w-4xl">
         <PageHeader
-          title="Recommendations"
+          title="Your jobs"
           description="What to actually look at, in order, and why."
         />
         <EmptyState
           title="No candidate profile yet"
-          reason="Recommendations rank matched jobs for a stored profile. Create one first."
+          reason="Jobs are ranked against a stored profile. Create one first."
           action={<Link href="/profile">Create a profile</Link>}
         />
       </div>
@@ -67,7 +133,7 @@ export default async function RecommendationsPage({
     service.getTopRecommendations(profileId, {
       limit: query.limit,
       ...(query.tier ? { tiers: [query.tier] } : {}),
-      ...(query.notifiableOnly ? { notificationEligibleOnly: true } : {}),
+      ...(query.shortlistOnly ? { notificationEligibleOnly: true } : {}),
     }),
     repository.statistics(profileId),
   ]);
@@ -75,16 +141,16 @@ export default async function RecommendationsPage({
   return (
     <div className="max-w-5xl">
       <PageHeader
-        title="Recommendations"
-        description="Ranked across everything available — not just how well each job matches."
+        title="Your jobs"
+        description="Everything worth your time, best first. Ranked on more than how well each one matches."
       />
 
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Stat label="Ranked" value={statistics.total} />
         <Stat
-          label="Notifiable"
+          label="Shortlisted"
           value={statistics.notifiable}
-          hint="passes every notification rule"
+          hint="clears every quality bar"
         />
         <Stat label="Average score" value={statistics.averageScore} />
         <Stat
@@ -97,41 +163,53 @@ export default async function RecommendationsPage({
       {rows.length === 0 ? (
         <EmptyState
           title="Nothing ranked yet"
-          reason="Jobs must be discovered, enriched and matched before they can be ranked. Run a refresh once matches exist."
+          reason="Jobs must be discovered, enriched and matched before they can be ranked. The worker does this hourly; the Sources page shows whether anything is coming in."
+          action={<Link href="/sources">Check sources</Link>}
         />
       ) : (
         <Card
-          title={`${rows.length} recommendation${rows.length === 1 ? '' : 's'}`}
-          description={query.notifiableOnly ? 'Notifiable only.' : 'Including jobs held back from notification.'}
+          title={`${rows.length} job${rows.length === 1 ? '' : 's'}`}
+          description={
+            query.shortlistOnly
+              ? 'Shortlisted only.'
+              : 'Including jobs that fell short of the shortlist.'
+          }
         >
           <ol className="divide-y" style={{ borderColor: 'var(--border)' }}>
             {rows.map((row) => {
               const rec = row.recommendation;
+              const href = row.job.applyUrl ?? row.job.canonicalUrl ?? row.job.sourceUrl;
+              const salary = formatSalary(row.job);
+              const place = formatPlace(row.job);
+
               return (
-                <li key={row.job.id} className="py-3 first:pt-0 last:pb-0">
-                  <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <div className="flex items-baseline gap-2">
-                      <span
-                        className="tabular text-xs"
-                        style={{ color: 'var(--muted)' }}
-                      >
+                <li key={row.job.id} className="py-4 first:pt-0 last:pb-0">
+                  {/* ── Line 1: who and what, with the two scores ──────────── */}
+                  <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
+                    <div className="flex min-w-0 items-baseline gap-2">
+                      <span className="tabular text-xs" style={{ color: 'var(--muted)' }}>
                         #{rec.rank}
                       </span>
-                      <a
-                        href={row.job.applyUrl ?? row.job.canonicalUrl ?? row.job.sourceUrl}
-                        target="_blank"
-                        rel="noreferrer noopener"
-                        className="text-sm font-semibold hover:underline"
-                      >
-                        {row.job.title}
-                      </a>
+                      <div className="min-w-0">
+                        <a
+                          href={href}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                          className="text-base font-semibold hover:underline"
+                        >
+                          {row.job.title}
+                        </a>
+                        <div className="text-sm" style={{ color: 'var(--muted)' }}>
+                          {row.job.companyNameRaw}
+                        </div>
+                      </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex shrink-0 items-center gap-2">
                       <Badge tone={TIER_TONE[rec.tier] ?? 'neutral'}>
                         {TIER_ICONS[rec.tier]} {rec.tier.replace(/_/g, ' ').toLowerCase()}
                       </Badge>
-                      <span className="tabular text-sm font-semibold">
+                      <span className="tabular text-lg font-semibold leading-none">
                         {Math.round(rec.finalScore)}
                       </span>
                       {/* Shown beside, never instead of, the recommendation score. */}
@@ -141,15 +219,33 @@ export default async function RecommendationsPage({
                     </div>
                   </div>
 
-                  <div className="mt-0.5 text-xs" style={{ color: 'var(--muted)' }}>
-                    {row.job.companyNameRaw} · {row.job.sourceId}
-                    {row.signals ? ` · ${row.signals.lifecycleStatus.toLowerCase()}` : ''}
+                  {/* ── Line 2: the facts you decide on ────────────────────── */}
+                  <div
+                    className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs"
+                    style={{ color: 'var(--muted)' }}
+                  >
+                    {place && <span>📍 {place}</span>}
+                    {salary ? (
+                      <span className="tabular">💰 {salary}</span>
+                    ) : (
+                      /*
+                       * Said out loud rather than left blank.
+                       *
+                       * Most Nigerian postings omit salary, and a silent gap
+                       * reads as "the system failed to parse it" when in fact
+                       * the employer never published one.
+                       */
+                      <span>💰 not stated</span>
+                    )}
+                    <span>🕑 {formatAge(row.job.postedAt, row.job.firstSeenAt)}</span>
+                    <span>via {row.job.sourceId}</span>
                   </div>
 
-                  <p className="mt-1 text-sm">{rec.rankExplanation}</p>
+                  {/* ── Line 3: why it sits here ───────────────────────────── */}
+                  <p className="mt-2 text-sm">{rec.rankExplanation}</p>
 
                   {rec.rankReasons.length > 0 && (
-                    <ul className="mt-1.5 flex flex-wrap gap-1.5 text-[11px]">
+                    <ul className="mt-2 flex flex-wrap gap-1.5 text-[11px]">
                       {rec.rankReasons.slice(0, 5).map((reason, index) => (
                         <li
                           key={`${row.job.id}-r${index}`}
@@ -163,10 +259,22 @@ export default async function RecommendationsPage({
                   )}
 
                   {!rec.notificationEligible && rec.notificationBlockers.length > 0 && (
-                    <p className="mt-1.5 text-xs" style={{ color: 'var(--warn)' }}>
-                      Held back: {rec.notificationBlockers.slice(0, 2).join('; ')}
+                    <p className="mt-2 text-xs" style={{ color: 'var(--warn)' }}>
+                      Below the shortlist: {rec.notificationBlockers.slice(0, 2).join('; ')}
                     </p>
                   )}
+
+                  <div className="mt-2">
+                    <a
+                      href={href}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="inline-block rounded border px-2.5 py-1 text-xs font-medium hover:underline"
+                      style={{ borderColor: 'var(--border)' }}
+                    >
+                      Open posting →
+                    </a>
+                  </div>
                 </li>
               );
             })}

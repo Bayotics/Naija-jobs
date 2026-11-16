@@ -80,28 +80,42 @@ const SECTIONS: Array<{
   group: string;
   items: Array<{ href: string; label: string; icon: string; pending?: boolean }>;
 }> = [
+  /*
+   * Three groups, in the order a day actually goes.
+   *
+   * "Your jobs" is first and alone at the top because with no email it is the
+   * only page that has to be opened — everything else exists to make that list
+   * better. Previously it sat fourth in a flat run of seven, below the
+   * dashboard and the raw job dump, which put the product below its own
+   * plumbing.
+   */
   {
-    group: 'Discovery',
+    group: 'Your search',
     items: [
-      { href: '/', label: 'Dashboard', icon: 'dashboard' },
-      { href: '/jobs', label: 'Jobs', icon: 'jobs' },
-      { href: '/recommendations', label: 'Recommendations', icon: 'recommendations' },
-      { href: '/matches', label: 'Matches', icon: 'matches' },
-      { href: '/opportunities', label: 'Opportunities', icon: 'opportunities' },
+      { href: '/recommendations', label: 'Your jobs', icon: 'recommendations' },
       { href: '/saved', label: 'Saved', icon: 'saved' },
       { href: '/applications', label: 'Applications', icon: 'applications' },
+      { href: '/opportunities', label: 'Opportunities', icon: 'opportunities' },
     ],
   },
   {
-    group: 'Configuration',
+    group: 'You',
     items: [
-      { href: '/control-center', label: 'Control Centre', icon: 'control' },
       { href: '/profile', label: 'Candidate Profile', icon: 'profile' },
-      { href: '/candidate', label: 'Candidate Intelligence', icon: 'candidate' },
-      { href: '/resume', label: 'Documents & Evidence', icon: 'documents' },
-      { href: '/learning', label: 'What We Learned', icon: 'learning' },
       { href: '/preferences', label: 'Preferences', icon: 'preferences' },
+      { href: '/resume', label: 'Documents & Evidence', icon: 'documents' },
+      { href: '/candidate', label: 'Candidate Intelligence', icon: 'candidate' },
+      { href: '/learning', label: 'What We Learned', icon: 'learning' },
+    ],
+  },
+  {
+    group: 'The machine',
+    items: [
+      { href: '/', label: 'Dashboard', icon: 'dashboard' },
+      { href: '/jobs', label: 'All jobs', icon: 'jobs' },
+      { href: '/matches', label: 'Matches', icon: 'matches' },
       { href: '/sources', label: 'Sources', icon: 'sources' },
+      { href: '/control-center', label: 'Control Centre', icon: 'control' },
       { href: '/ops', label: 'Operations', icon: 'operations' },
       { href: '/settings', label: 'Settings', icon: 'settings' },
     ],
@@ -111,8 +125,8 @@ const SECTIONS: Array<{
 /**
  * Which link owns the current URL.
  *
- * Longest-prefix rather than "any prefix matches". `/notifications` and
- * `/notifications/intelligence` both prefix-match the intelligence page, and
+ * Longest-prefix rather than "any prefix matches". `/jobs` and
+ * `/jobs/[id]` both prefix-match a job page, and
  * the naive rule lit up both — so the sidebar showed two active items and
  * neither told you where you were.
  */

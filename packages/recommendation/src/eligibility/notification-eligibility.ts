@@ -102,7 +102,7 @@ export function evaluateNotificationEligibility(
     );
   }
   if (!NOTIFIABLE_TIERS.has(input.tier)) {
-    block('below_score_threshold', `Tier ${input.tier} is not notifiable`);
+    block('below_score_threshold', `Tier ${input.tier} is below the shortlist`);
   }
 
   // ── Freshness window ────────────────────────────────────────────────────

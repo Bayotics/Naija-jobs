@@ -7,9 +7,9 @@ export const dynamic = 'force-dynamic';
 /**
  * Dashboard.
  *
- * A server component reading real repository data. Counts are genuinely zero
- * until connectors land in prompt 5 — the page says so rather than rendering
- * invented numbers.
+ * A server component reading real repository data. Counts are whatever the
+ * database actually holds, zero included — never a plausible-looking
+ * placeholder.
  */
 export default async function DashboardPage() {
   const ctx = await getServerContext();
@@ -51,12 +51,12 @@ export default async function DashboardPage() {
       <div className="grid gap-4 lg:grid-cols-2">
         <Card
           title="Pipeline status"
-          description="Stages are implemented across prompts 5–18."
+          description="Where the corpus currently sits."
         >
           {totalJobs === 0 ? (
             <EmptyState
               title="No jobs discovered yet"
-              reason="Source connectors are implemented in prompt 5. The schema, scheduling and source registry are in place and every source below is registered and ready."
+              reason="The worker checks every enabled source once an hour. If this stays at zero, the Sources page will say which source is failing and why."
               action={
                 <Link
                   href="/sources"

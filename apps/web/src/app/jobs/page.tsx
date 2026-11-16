@@ -37,7 +37,7 @@ export default async function JobsPage({
       {items.length === 0 ? (
         <EmptyState
           title="No jobs discovered yet"
-          reason="Discovery begins once source connectors are implemented (prompt 5). The normalization, identity and persistence layers they will write into are already in place and tested."
+          reason="Nothing has been discovered yet. The worker scans the job boards hourly — check the Sources page to see whether any of them are reporting a problem."
         />
       ) : (
         <Card title={rangeLabel(query.offset, items.length, total)}>

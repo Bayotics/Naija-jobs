@@ -4,7 +4,7 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: 'Naija Jobs',
-  description: 'Autonomous job discovery, matching and notification',
+  description: 'Nigerian jobs, found and ranked while you sleep',
 };
 
 /**
