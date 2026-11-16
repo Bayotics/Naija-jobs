@@ -89,6 +89,7 @@ something somewhere:
 | Claude + OpenAI API keys | **~$10** total, and that lasts a good while |
 | Neon Postgres | Free tier. Maybe **$5/month** after the trial |
 | Render worker (optional) | **$7/month** — only if you want it running without your laptop on |
+| Vercel dashboard | Free tier |
 | Everything else | $0 |
 
 So **about $10 to try it on your own machine**, around $12/month if you deploy
@@ -173,21 +174,26 @@ you.
 A worker on your laptop stops working when you shut your laptop. Rude, but
 fair. And it's the whole point: jobs get posted while you're asleep.
 
-There's a `render.yaml` in the repo, so:
+It goes out in two halves, because the two halves are different animals:
 
-1. Push to GitHub
-2. [Render](https://render.com) → **New** → **Blueprint** → pick this repo
-3. Paste your keys when it asks (it prompts once per secret)
-4. Deploy
+- **The worker → [Render](https://render.com).** A process that never stops,
+  crawling on a schedule. ~$7/month, and it's the bit worth paying for.
+- **The dashboard → [Vercel](https://vercel.com).** A normal web app that's
+  idle most of the day. Free tier is plenty.
 
-It creates two services: the **worker**, which is the actual product, and the
-**dashboard**, which is optional. The worker is a background service, not a web
-one — Render puts free web services to sleep, and a sleeping worker finds you
-nothing. That's $7/month and it's the thing worth paying for. Drop the
-dashboard to the free tier if you want; it sleeping is fine.
+Both read the same Neon database. `render.yaml` and `vercel.json` are in the
+repo, so each platform is a few clicks.
 
-Any $5 VPS works too — there's a `Dockerfile`. Avoid Vercel for the worker: no
-always-on process, nothing to run.
+**Full walkthrough, including the three settings that will bite you:
+[DEPLOYING.md](DEPLOYING.md).**
+
+Short version of those three: use `DATABASE_DRIVER=neon` on Vercel (`pg` leaks
+connections from serverless functions), use Neon's **pooled** connection
+string, and give Vercel the *same* `AUTH_SECRET` Render generated — mismatched
+secrets look exactly like a login bug and aren't one.
+
+Any $5 VPS works for the worker too; there's a `Dockerfile`. What won't work is
+the worker on Vercel: no always-on process, nothing to run.
 
 ---
 

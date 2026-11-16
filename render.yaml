@@ -1,11 +1,18 @@
 # Render Blueprint — https://render.com/docs/blueprint-spec
 #
-# Two services from one repository and one Dockerfile. The worker is the
-# product; the dashboard is optional and only needs to be awake when someone is
-# looking at it.
+# One service: the worker. The dashboard is deployed separately on Vercel,
+# which is why there is no `web` service here.
+#
+# The split follows what each half actually is. The worker is a process that
+# must never stop — it crawls on a schedule, holds a queue lease and keeps a
+# database connection — and that is the one thing a serverless platform cannot
+# host. The dashboard is a request/response app that is idle most of the day,
+# which is the one thing serverless is good at. Putting both on a paid
+# always-on instance means paying for an idle web server; putting both on
+# Vercel means no worker at all.
 #
 # Deploy: Render → New → Blueprint → pick this repo. Render reads this file,
-# creates both services, and prompts once for every secret marked `sync: false`.
+# creates the worker, and prompts once for every secret marked `sync: false`.
 #
 # ── Why the worker is a `worker` and not a `web` ────────────────────────────
 #
@@ -48,11 +55,14 @@ services:
         sync: false
 
       # Required in production; the process refuses to boot without them.
+      #
+      # `generateValue` makes Render invent these. Copy both into Vercel after
+      # the first deploy: a session issued by the dashboard is only valid if
+      # both halves sign with the same AUTH_SECRET, and two independently
+      # generated secrets fail in a way that looks like a login bug.
       - key: AUTH_SECRET
         generateValue: true
       - key: OPS_PASSWORD
-        generateValue: true
-      - key: FEEDBACK_TOKEN_SECRET
         generateValue: true
 
       # Four concurrent tasks on a paid instance. The ceiling here is politeness
@@ -71,55 +81,6 @@ services:
       - key: CRAWLER_CONTACT_EMAIL
         sync: false
 
-      - key: LOG_LEVEL
-        value: info
-      - key: LOG_PRETTY
-        value: "false"
-
-  - type: web
-    name: naija-jobs-web
-    runtime: docker
-    dockerfilePath: ./Dockerfile
-    plan: starter
-    region: frankfurt
-    branch: main
-    dockerCommand: pnpm --filter @job-intel/web start
-    healthCheckPath: /api/v1/health
-
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: DATABASE_DRIVER
-        value: pg
-      - key: DATABASE_URL
-        sync: false
-      - key: PORT
-        value: "3000"
-      - key: APP_URL
-        sync: false
-      - key: AUTH_SECRET
-        # Same signing key as the worker, so a session issued by one is valid
-        # on the other.
-        fromService:
-          name: naija-jobs-worker
-          type: worker
-          envVarKey: AUTH_SECRET
-      - key: OPS_PASSWORD
-        fromService:
-          name: naija-jobs-worker
-          type: worker
-          envVarKey: OPS_PASSWORD
-      - key: FEEDBACK_TOKEN_SECRET
-        fromService:
-          name: naija-jobs-worker
-          type: worker
-          envVarKey: FEEDBACK_TOKEN_SECRET
-      - key: ANTHROPIC_API_KEY
-        sync: false
-      - key: AI_EMBEDDING_PROVIDER
-        value: openai
-      - key: AI_EMBEDDING_API_KEY
-        sync: false
       - key: LOG_LEVEL
         value: info
       - key: LOG_PRETTY

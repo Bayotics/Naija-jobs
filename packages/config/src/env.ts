@@ -63,7 +63,6 @@ export const envSchema = z
     /** Role granted on successful login. Defaults to the most privileged. */
     OPS_ROLE: z.enum(['viewer', 'operator', 'admin']).default('admin'),
     ADMIN_API_KEY: optionalNonEmpty,
-    FEEDBACK_TOKEN_SECRET: optionalNonEmpty,
 
     // ── AI providers (prompt 15+) ───────────────────────────────────────────
     ANTHROPIC_API_KEY: optionalNonEmpty,
@@ -142,7 +141,6 @@ const HINTS: Record<string, string> = {
   REDIS_URL: 'e.g. redis://localhost:6379 (or rediss:// for TLS)',
   AUTH_SECRET: 'Generate with: openssl rand -base64 32',
   OPS_PASSWORD: 'The console login credential. Must differ from AUTH_SECRET.',
-  FEEDBACK_TOKEN_SECRET: 'Generate with: openssl rand -base64 32',
 };
 
 /**

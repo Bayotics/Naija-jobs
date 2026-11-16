@@ -15,7 +15,6 @@ const nextConfig = {
     '@job-intel/candidate',
     '@job-intel/matching',
     '@job-intel/recommendation',
-    '@job-intel/notifications',
     '@job-intel/ops',
     '@job-intel/queue',
     '@job-intel/db',
