@@ -61,6 +61,11 @@ services:
       - key: WORKER_CONCURRENCY
         value: "4"
 
+      # Jooble. Without it that source reports itself unavailable and is
+      # skipped; the Jobberman and MyJobMag sitemaps need no credential.
+      - key: JOOBLE_API_KEY
+        sync: false
+
       - key: CRAWLER_USER_AGENT
         value: NaijaJobsBot/1.0
       - key: CRAWLER_CONTACT_EMAIL
