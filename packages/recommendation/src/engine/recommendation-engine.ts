@@ -148,6 +148,21 @@ export interface RankingResult {
  */
 export interface RecommendationEngineOptions {
   config?: z.input<typeof recommendationConfigSchema>;
+  /**
+   * Freezes the engine's clock.
+   *
+   * Every time-dependent signal in a ranking pass — freshness, staleness,
+   * repost detection, notification cooldowns — is derived from one instant
+   * read at the top of `rank`. Left unset that instant is `new Date()`, which
+   * is what production wants and what a test cannot reason about: a fixture
+   * posted "forty minutes ago" is forty minutes old on the day the fixture was
+   * written and three months old a quarter later, so a suite built on absolute
+   * fixture dates silently decays from "ranks the fresh job first" to "every
+   * job is equally stale".
+   *
+   * Setting it pins the pass to a chosen instant, which is what makes score
+   * expectations reproducible rather than merely reproducible-this-week.
+   */
   now?: Date;
 }
 
@@ -173,14 +188,22 @@ function hasApplicationPath(input: Pick<RecommendationInput, 'applyUrl' | 'posti
 export class RecommendationEngine {
   readonly config: RecommendationConfig;
   private readonly authority: SourceAuthorityResolver;
+  /**
+   * Read once per pass. A fixed `options.now` becomes a constant function
+   * rather than being stored as a date, so the one call site in `rank` reads
+   * the same either way and there is no branch to forget.
+   */
+  private readonly clock: () => Date;
 
   constructor(options: RecommendationEngineOptions = {}) {
     this.config = recommendationConfigSchema.parse(options.config ?? {});
     this.authority = new SourceAuthorityResolver(this.config.authority);
+    const fixed = options.now;
+    this.clock = fixed ? () => fixed : () => new Date();
   }
 
   /** Computes the per-job signals. Pure; no candidate involved. */
-  computeSignals(input: RecommendationInput, now = new Date()): JobSignals {
+  computeSignals(input: RecommendationInput, now = this.clock()): JobSignals {
     const sourceAuthority = this.authority.level({
       id: input.sourceId,
       sourceType: input.sourceType,
@@ -270,7 +293,7 @@ export class RecommendationEngine {
     query: Partial<TopRecommendationsQuery> = {},
   ): RankingResult {
     const startedAt = Date.now();
-    const now = new Date();
+    const now = this.clock();
     const suppressed: Array<{ jobId: string; reason: string }> = [];
     const signals = new Map<string, JobSignals>();
 

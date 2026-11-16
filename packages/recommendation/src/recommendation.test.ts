@@ -738,7 +738,16 @@ describe('behavioural signals', () => {
 // ── The realistic ranking ───────────────────────────────────────────────────
 
 describe('the realistic 50-job ranking', () => {
-  const engine = new RecommendationEngine();
+  /*
+   * The corpus is dated relative to `FIXTURE_NOW`, so the engine has to be
+   * told that is the instant it is ranking at. Without it the engine read the
+   * real clock and every assertion here quietly became a statement about how
+   * long ago the fixtures were written: on 2026-08-18 the top job was "forty
+   * minutes old", and three months later it, Vega and everything else were
+   * equally stale, the score distribution collapsed, and nothing cleared the
+   * notification threshold.
+   */
+  const engine = new RecommendationEngine({ now: FIXTURE_NOW });
   const corpus = buildFixtureCorpus();
   const result = engine.rank(PROFILE, corpus);
   const byId = new Map(corpus.map((j) => [j.jobId, j]));
@@ -864,7 +873,9 @@ describe('the realistic 50-job ranking', () => {
 
 describe('performance', () => {
   it('ranks 10,000 jobs in one pass with no model call', () => {
-    const engine = new RecommendationEngine();
+    // Same reason as the ranking suite: `ageMs` in the fixtures is an age
+    // measured back from `FIXTURE_NOW`.
+    const engine = new RecommendationEngine({ now: FIXTURE_NOW });
     const pool = Array.from({ length: 10_000 }, (_, i) =>
       makeRecommendationInput({
         jobId: `00000000-0000-4000-9000-${String(i).padStart(12, '0')}`,

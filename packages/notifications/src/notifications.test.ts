@@ -821,26 +821,28 @@ describe('preference links', () => {
   // 18, 23
   it('signs a link that cannot be edited into another account', () => {
     const token = createPreferenceToken({ profileId: 'profile-1', scope: 'manage' }, SECRET, FIXTURE_NOW);
-    const verified = verifyPreferenceToken(token, SECRET);
+    const verified = verifyPreferenceToken(token, SECRET, FIXTURE_NOW);
     expect(verified.valid).toBe(true);
     expect(verified.token?.profileId).toBe('profile-1');
 
     // Swapping the payload for another profile breaks the signature.
     const [, signature] = token.split('.');
-    const forged = `${Buffer.from(JSON.stringify({ profileId: 'someone-else', scope: 'manage', expiresAt: Date.now() + 1000 })).toString('base64url')}.${signature}`;
-    expect(verifyPreferenceToken(forged, SECRET).valid).toBe(false);
+    const forged = `${Buffer.from(JSON.stringify({ profileId: 'someone-else', scope: 'manage', expiresAt: FIXTURE_NOW.getTime() + 1000 })).toString('base64url')}.${signature}`;
+    expect(verifyPreferenceToken(forged, SECRET, FIXTURE_NOW).valid).toBe(false);
   });
 
   it('rejects a token signed with a different secret, and an expired one', () => {
     const token = createPreferenceToken({ profileId: 'p' }, SECRET, FIXTURE_NOW);
-    expect(verifyPreferenceToken(token, 'another-secret-at-least-16-chars').valid).toBe(false);
+    expect(
+      verifyPreferenceToken(token, 'another-secret-at-least-16-chars', FIXTURE_NOW).valid,
+    ).toBe(false);
 
     const expired = createPreferenceToken(
       { profileId: 'p', ttlDays: -1 },
       SECRET,
-      new Date(Date.now() - 2 * DAY),
+      new Date(FIXTURE_NOW.getTime() - 2 * DAY),
     );
-    expect(verifyPreferenceToken(expired, SECRET).reason).toMatch(/expired/);
+    expect(verifyPreferenceToken(expired, SECRET, FIXTURE_NOW).reason).toMatch(/expired/);
   });
 
   it('degrades to a plain settings URL without a secret', () => {

@@ -30,7 +30,22 @@ describe('LearningService', () => {
   let jobIds: string[] = [];
 
   const logger = new MemoryLogger();
-  const now = new Date('2026-08-19T12:00:00Z');
+  /*
+   * An hour ago, not a fixed calendar date.
+   *
+   * Every aggregate this suite reads is windowed — `eventCounts` looks back
+   * thirty days, the engagement and source-value queries ninety — and those
+   * windows are computed from the wall clock inside the repository. A literal
+   * `new Date('2026-08-19')` therefore does not pin the test's time base, it
+   * only pins how fast the test rots: the events were inside the window on the
+   * day it was written and outside it three months later, at which point the
+   * suite reported that ingestion counted nothing and the candidate valued no
+   * source — while the production code was fine.
+   *
+   * Read once, so every event in a run shares one instant, and backdated an
+   * hour so nothing sits exactly on a window's edge.
+   */
+  const now = new Date(Date.now() - 3_600_000);
 
   /** Synthetic ids for jobs that are scored but never stored. */
   const REACT_LIKE = '55555555-5555-4555-8555-555555555551';

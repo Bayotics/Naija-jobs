@@ -76,8 +76,18 @@ export interface TokenVerification {
  * The signature is compared with `timingSafeEqual` — a plain `===` leaks the
  * position of the first differing byte, which is enough to forge one over
  * enough requests.
+ *
+ * `now` mirrors `createPreferenceToken`, which has always taken one. The pair
+ * being asymmetric meant a token could be minted at a chosen instant but only
+ * ever checked against the wall clock, so a test that signed a link at a fixed
+ * fixture date passed until that date fell more than the token's 30-day
+ * lifetime in the past, and then reported the signing code broken.
  */
-export function verifyPreferenceToken(value: string, secret: string): TokenVerification {
+export function verifyPreferenceToken(
+  value: string,
+  secret: string,
+  now: Date = new Date(),
+): TokenVerification {
   const [payload, signature] = value.split('.');
   if (!payload || !signature) {
     return { valid: false, token: null, reason: 'malformed token' };
@@ -100,7 +110,7 @@ export function verifyPreferenceToken(value: string, secret: string): TokenVerif
   if (typeof token.profileId !== 'string' || typeof token.expiresAt !== 'number') {
     return { valid: false, token: null, reason: 'payload is missing required fields' };
   }
-  if (token.expiresAt < Date.now()) {
+  if (token.expiresAt < now.getTime()) {
     return { valid: false, token: null, reason: 'token has expired' };
   }
 
