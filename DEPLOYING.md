@@ -34,10 +34,19 @@ node -e "const c=require('crypto');console.log('AUTH_SECRET  =',c.randomBytes(32
 ## 2. The dashboard — Vercel
 
 1. [Vercel](https://vercel.com/new) → **Add New** → **Project** → import this repo
-2. Leave **Root Directory** as the repository root. `vercel.json` already says
-   where the app is, which command builds it, and where the output lands —
-   setting the root to `apps/web` makes Vercel look for that file in the wrong
-   place and the workspace packages resolve from nowhere.
+2. Set **Root Directory** to **`apps/web`**, and leave *Include source files
+   outside of the Root Directory* switched **on**.
+
+   Vercel decides a project is a Next.js app by looking for `next` in the
+   `package.json` of the root directory, and in a monorepo that dependency
+   lives in `apps/web`, not at the top. Pointed at the repository root it
+   installs the whole workspace, finds no `next`, and stops with
+   `[NEXT_NO_VERSION] No Next.js version detected`.
+
+   The "include files outside" switch is what then lets the build read the
+   sixteen workspace packages the app compiles from source. With the root at
+   `apps/web` and that switch off, `pnpm install` resolves the workspace links
+   but the sources they point at are not in the build context.
 3. Add the environment variables below
 4. Deploy
 

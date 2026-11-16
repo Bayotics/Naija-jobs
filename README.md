@@ -187,10 +187,11 @@ repo, so each platform is a few clicks.
 **Full walkthrough, including the three settings that will bite you:
 [DEPLOYING.md](DEPLOYING.md).**
 
-Short version of those three: use `DATABASE_DRIVER=neon` on Vercel (`pg` leaks
-connections from serverless functions), use Neon's **pooled** connection
-string, and give Vercel the *same* `AUTH_SECRET` Render generated — mismatched
-secrets look exactly like a login bug and aren't one.
+Short version: set Vercel's **Root Directory to `apps/web`** (it looks for
+`next` there and a monorepo root doesn't have it), use `DATABASE_DRIVER=neon`
+on Vercel (`pg` leaks connections from serverless functions), use Neon's
+**pooled** connection string, and use the *same* `AUTH_SECRET` on both sides —
+mismatched secrets look exactly like a login bug and aren't one.
 
 Any $5 VPS works for the worker too; there's a `Dockerfile`. What won't work is
 the worker on Vercel: no always-on process, nothing to run.
