@@ -1,13 +1,16 @@
-# Production image for the worker and the web app.
+# Production image for the worker.
 #
-# One image, two entrypoints. The worker and the web app share every package in
-# this monorepo, and building them separately would mean building the same
-# dependency tree twice and shipping two images that can drift apart. The
-# process is chosen at run time by the command, not at build time by the tag.
+# The dashboard is not built here any more — it deploys on Vercel, which builds
+# it from `vercel.json`. Building it here too cost a couple of minutes on every
+# worker deploy and, worse, meant a failed `next build` could stop the worker
+# from shipping. Nothing else in the monorepo has a build step: the worker runs
+# TypeScript directly through tsx, which is why there is no compile stage below.
 #
-#   docker build -t jobintel .
-#   docker run jobintel node --import tsx apps/worker/src/index.ts
-#   docker run jobintel pnpm --filter @job-intel/web start
+# To self-host the dashboard instead of using Vercel:
+#   pnpm --filter @job-intel/web build && pnpm --filter @job-intel/web start
+#
+#   docker build -t naijajobs .
+#   docker run naijajobs
 
 FROM node:22-slim AS base
 
@@ -37,7 +40,6 @@ COPY packages/db/package.json packages/db/
 COPY packages/discovery/package.json packages/discovery/
 COPY packages/enrichment/package.json packages/enrichment/
 COPY packages/matching/package.json packages/matching/
-COPY packages/notifications/package.json packages/notifications/
 COPY packages/observability/package.json packages/observability/
 COPY packages/ops/package.json packages/ops/
 COPY packages/queue/package.json packages/queue/
@@ -48,11 +50,13 @@ COPY packages/search-config/package.json packages/search-config/
 
 RUN pnpm install --frozen-lockfile
 
-# ── Build ───────────────────────────────────────────────────────────────────
+# ── Source ──────────────────────────────────────────────────────────────────
+#
+# No compile step. `pnpm build` used to run here and only ever built the Next
+# app, which now builds on Vercel.
 FROM deps AS build
 
 COPY . .
-RUN pnpm build
 
 # ── Runtime ─────────────────────────────────────────────────────────────────
 FROM base AS runtime
