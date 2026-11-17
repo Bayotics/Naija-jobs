@@ -47,8 +47,15 @@ node -e "const c=require('crypto');console.log('AUTH_SECRET  =',c.randomBytes(32
    sixteen workspace packages the app compiles from source. With the root at
    `apps/web` and that switch off, `pnpm install` resolves the workspace links
    but the sources they point at are not in the build context.
-3. Add the environment variables below
-4. Deploy
+3. Leave **Output Directory** blank. If it holds `apps/web/.next` from an
+   earlier attempt, clear it: that path is read *relative to the root
+   directory*, so with the root already at `apps/web` it resolves to
+   `apps/web/apps/web/.next` and the deploy fails with
+   `[NEXT_OUTPUT_DIR_MISSING]` after a build that otherwise succeeded.
+   `apps/web/vercel.json` now pins it to `.next`, which overrides whatever the
+   dashboard holds.
+4. Add the environment variables below
+5. Deploy
 
 ### Environment variables
 
