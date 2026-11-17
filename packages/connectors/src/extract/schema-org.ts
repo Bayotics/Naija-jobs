@@ -114,6 +114,65 @@ function flattenNodes(value: unknown, depth = 0): Record<string, unknown>[] {
   return nodes;
 }
 
+/**
+ * Resolves a JSON-LD `@id` reference against the rest of the document.
+ *
+ * Schema.org lets a document say the same thing two ways. Most sites inline
+ * the organisation:
+ *
+ *     "hiringOrganization": { "@type": "Organization", "name": "Acme" }
+ *
+ * Jobberman — and anything else built on a normalised graph — instead emits a
+ * pointer, and puts the organisation beside the posting in the same `@graph`:
+ *
+ *     "hiringOrganization": { "@id": ".../Organization/agency-1273500" }
+ *     ...
+ *     { "@type": "Organization", "@id": ".../agency-1273500", "name": "SENCE" }
+ *
+ * Reading only the first form loses every company name on such a site. Ours
+ * then fell back to the host, so 681 postings claimed to be hiring at
+ * "jobberman.com" — a value that is not wrong enough to look broken, which is
+ * what made it survive.
+ */
+type NodeIndex = ReadonlyMap<string, Record<string, unknown>>;
+
+function indexById(nodes: readonly Record<string, unknown>[]): NodeIndex {
+  const index = new Map<string, Record<string, unknown>>();
+
+  for (const node of nodes) {
+    const id = node['@id'];
+    // First writer wins. A duplicate @id is malformed, and preferring the
+    // earlier node keeps the result stable rather than order-dependent on a
+    // detail the publisher got wrong.
+    if (typeof id === 'string' && id.length > 0 && !index.has(id)) index.set(id, node);
+  }
+
+  return index;
+}
+
+/**
+ * Follows a reference once.
+ *
+ * Once, not transitively: a chain of references is either a loop or a document
+ * doing something this parser should not be guessing at, and one hop covers
+ * every real case.
+ */
+function deref(value: unknown, index: NodeIndex): unknown {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return value;
+
+  const node = value as Record<string, unknown>;
+  const id = node['@id'];
+  if (typeof id !== 'string') return value;
+
+  const target = index.get(id);
+  // A reference that resolves to itself is not a reference.
+  if (!target || target === node) return value;
+
+  // Merge rather than replace: a node may carry both a pointer and some
+  // inline fields, and the inline ones are the more specific statement.
+  return { ...target, ...node };
+}
+
 function typesOf(node: Record<string, unknown>): string[] {
   const raw = node['@type'] ?? node.type;
   if (typeof raw === 'string') return [raw];
@@ -245,7 +304,7 @@ function readApplicantRequirements(node: Record<string, unknown>): string[] {
     .slice(0, 20);
 }
 
-function toPosting(node: Record<string, unknown>): ExtractedJobPosting {
+function toPosting(node: Record<string, unknown>, index: NodeIndex = new Map()): ExtractedJobPosting {
   const description = str(node.description);
   const location = readLocation(node);
   const salary = readSalary(node);
@@ -284,8 +343,9 @@ function toPosting(node: Record<string, unknown>): ExtractedJobPosting {
     datePosted: date(node.datePosted),
     validThrough: date(node.validThrough),
     employmentTypes,
-    hiringOrganization: str(pick(node.hiringOrganization, 'name')) ?? str(node.hiringOrganization),
-    organizationUrl: str(pick(node.hiringOrganization, 'url')) ?? null,
+    hiringOrganization:
+      str(pick(deref(node.hiringOrganization, index), 'name')) ?? str(node.hiringOrganization),
+    organizationUrl: str(pick(deref(node.hiringOrganization, index), 'url')) ?? null,
     organizationLogo:
       str(pick(node.hiringOrganization, 'logo')) ??
       str(pick(pick(node.hiringOrganization, 'logo'), 'url')),
@@ -316,14 +376,22 @@ export function extractJobPostings(html: string): SchemaOrgExtraction {
   const postings: ExtractedJobPosting[] = [];
   const otherTypes = new Set<string>();
 
-  for (const value of values) {
-    for (const node of flattenNodes(value)) {
-      const types = typesOf(node);
-      if (types.some((type) => type.toLowerCase().endsWith('jobposting'))) {
-        postings.push(toPosting(node));
-      } else {
-        for (const type of types) otherTypes.add(type);
-      }
+  /*
+   * Every node first, then the postings.
+   *
+   * The organisation a posting points at may appear after it in the document,
+   * so a single pass that parsed each posting as it was found could not
+   * resolve a forward reference.
+   */
+  const allNodes = values.flatMap((value) => flattenNodes(value));
+  const index = indexById(allNodes);
+
+  for (const node of allNodes) {
+    const types = typesOf(node);
+    if (types.some((type) => type.toLowerCase().endsWith('jobposting'))) {
+      postings.push(toPosting(node, index));
+    } else {
+      for (const type of types) otherTypes.add(type);
     }
   }
 

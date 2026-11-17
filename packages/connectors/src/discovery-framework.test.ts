@@ -339,6 +339,60 @@ describe('structured data extraction', () => {
     expect(result.malformedBlocks).toBe(1);
   });
 
+  it('resolves a hiringOrganization given as an @id reference', () => {
+    /*
+     * The shape Jobberman publishes, and the reason every one of its postings
+     * came through claiming to be hiring at "jobberman.com": the posting holds
+     * a pointer, and the organisation is a sibling in the same @graph. Reading
+     * only inline organisations loses the company name on any site built this
+     * way, and the host fallback that replaced it was plausible enough not to
+     * look broken.
+     */
+    const html = `<script type="application/ld+json">
+      {"@context":"https://schema.org","@graph":[
+        {"@type":"JobPosting","title":"Business Development Manager",
+         "hiringOrganization":{"@id":"https://x.test/#/schema/Organization/agency-1"}},
+        {"@type":"Organization","@id":"https://x.test/#/schema/Organization/agency-1",
+         "name":"SENCE (Skill Enhancement Centre)","url":"https://sence.test"}
+      ]}
+    </script>`;
+
+    const { postings } = extractJobPostings(html);
+
+    expect(postings).toHaveLength(1);
+    expect(postings[0]?.hiringOrganization).toBe('SENCE (Skill Enhancement Centre)');
+    expect(postings[0]?.organizationUrl).toBe('https://sence.test');
+  });
+
+  it('resolves a reference that appears before the node it points at', () => {
+    // Document order is the publisher's choice, so a forward reference has to
+    // work. It only does because every node is indexed before any posting is
+    // parsed.
+    const html = `<script type="application/ld+json">
+      {"@graph":[
+        {"@type":"Organization","@id":"#org","name":"Lagos Holdings"},
+        {"@type":"JobPosting","title":"Admin Officer","hiringOrganization":{"@id":"#org"}}
+      ]}
+    </script>`;
+
+    expect(extractJobPostings(html).postings[0]?.hiringOrganization).toBe('Lagos Holdings');
+  });
+
+  it('still reads an inline organisation, and survives a dangling reference', () => {
+    const inline = `<script type="application/ld+json">
+      {"@type":"JobPosting","title":"Receptionist",
+       "hiringOrganization":{"@type":"Organization","name":"Acme"}}
+    </script>`;
+    expect(extractJobPostings(inline).postings[0]?.hiringOrganization).toBe('Acme');
+
+    // A pointer at nothing yields no company rather than throwing or
+    // inventing one.
+    const dangling = `<script type="application/ld+json">
+      {"@type":"JobPosting","title":"Receptionist","hiringOrganization":{"@id":"#missing"}}
+    </script>`;
+    expect(extractJobPostings(dangling).postings[0]?.hiringOrganization).toBeNull();
+  });
+
   it('unwraps @graph and reports non-job types separately', () => {
     const html = `<script type="application/ld+json">
       {"@context":"https://schema.org","@graph":[

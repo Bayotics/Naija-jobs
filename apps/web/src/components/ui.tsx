@@ -1,6 +1,14 @@
 import type { ReactNode } from 'react';
 
-/** Shared presentational primitives. Deliberately small — no design system yet. */
+/**
+ * Shared presentational primitives.
+ *
+ * Small on purpose, but no longer *thin*: every surface in the app is one of
+ * these five, so a weak Card or an unreadable Badge is a weak app. Colour,
+ * radius and elevation all come from tokens in `globals.css` — nothing here
+ * hard-codes a hex value, which is what makes the light and dark themes stay
+ * in step.
+ */
 
 export function PageHeader({
   title,
@@ -14,9 +22,9 @@ export function PageHeader({
   return (
     <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
       <div>
-        <h1 className="text-xl font-semibold">{title}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
         {description && (
-          <p className="mt-1 max-w-2xl text-sm" style={{ color: 'var(--muted)' }}>
+          <p className="mt-1.5 max-w-2xl text-sm" style={{ color: 'var(--muted)' }}>
             {description}
           </p>
         )}
@@ -39,11 +47,19 @@ export function Card({
 }) {
   return (
     <section
-      className="rounded-lg border"
-      style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}
+      className="overflow-hidden border"
+      style={{
+        borderColor: 'var(--border)',
+        background: 'var(--surface)',
+        borderRadius: 'var(--radius)',
+        boxShadow: 'var(--shadow-sm)',
+      }}
     >
       {(title ?? description) && (
-        <div className="border-b px-4 py-3" style={{ borderColor: 'var(--border)' }}>
+        <div
+          className="border-b px-5 py-3.5"
+          style={{ borderColor: 'var(--border)', background: 'var(--surface-2)' }}
+        >
           {title && <h2 className="text-sm font-semibold">{title}</h2>}
           {description && (
             <p className="mt-0.5 text-xs" style={{ color: 'var(--muted)' }}>
@@ -52,7 +68,7 @@ export function Card({
           )}
         </div>
       )}
-      <div className="p-4">{children}</div>
+      <div className="p-5">{children}</div>
       {footer && (
         <div className="border-t px-4 py-3" style={{ borderColor: 'var(--border)' }}>
           {footer}
@@ -62,18 +78,47 @@ export function Card({
   );
 }
 
-export function Stat({ label, value, hint }: { label: string; value: ReactNode; hint?: string }) {
+/**
+ * `emphasis` is for the one number on a page that is the answer.
+ *
+ * Four identical tiles make the reader compare them to work out which matters.
+ * Marking one tints its value with the accent, which settles that in advance.
+ */
+export function Stat({
+  label,
+  value,
+  hint,
+  emphasis = false,
+}: {
+  label: string;
+  value: ReactNode;
+  hint?: string;
+  emphasis?: boolean;
+}) {
   return (
     <div
-      className="rounded-lg border p-4"
-      style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}
+      className="border p-4"
+      style={{
+        borderColor: 'var(--border)',
+        background: 'var(--surface)',
+        borderRadius: 'var(--radius)',
+        boxShadow: 'var(--shadow-sm)',
+      }}
     >
-      <div className="text-xs uppercase tracking-wide" style={{ color: 'var(--muted)' }}>
+      <div
+        className="text-[11px] font-medium uppercase tracking-wider"
+        style={{ color: 'var(--muted)' }}
+      >
         {label}
       </div>
-      <div className="tabular mt-1 text-2xl font-semibold">{value}</div>
+      <div
+        className="tabular mt-1.5 text-3xl font-semibold leading-none tracking-tight"
+        style={emphasis ? { color: 'var(--accent)' } : undefined}
+      >
+        {value}
+      </div>
       {hint && (
-        <div className="mt-1 text-xs" style={{ color: 'var(--muted)' }}>
+        <div className="mt-2 text-xs" style={{ color: 'var(--muted)' }}>
           {hint}
         </div>
       )}
@@ -91,11 +136,31 @@ const TONE_COLOR: Record<Tone, string> = {
   accent: 'var(--accent)',
 };
 
+/*
+ * Filled, not outlined.
+ *
+ * An outline badge draws a 1px box in the tone colour and sets the text to the
+ * same colour, which at 11px is the weakest thing on the row — the border eats
+ * the contrast the text needed. A soft fill gives the label a background of
+ * its own and reads as a label rather than as a stray box.
+ */
+const TONE_BG: Record<Tone, string> = {
+  neutral: 'var(--surface-2)',
+  ok: 'var(--ok-soft)',
+  warn: 'var(--warn-soft)',
+  danger: 'var(--danger-soft)',
+  accent: 'var(--accent-soft)',
+};
+
 export function Badge({ children, tone = 'neutral' }: { children: ReactNode; tone?: Tone }) {
   return (
     <span
-      className="inline-flex items-center rounded px-1.5 py-0.5 text-[11px] font-medium"
-      style={{ border: `1px solid ${TONE_COLOR[tone]}`, color: TONE_COLOR[tone] }}
+      className="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium whitespace-nowrap"
+      style={{
+        background: TONE_BG[tone],
+        color: TONE_COLOR[tone],
+        borderRadius: '999px',
+      }}
     >
       {children}
     </span>
@@ -120,11 +185,11 @@ export function EmptyState({
 }) {
   return (
     <div
-      className="rounded-lg border border-dashed p-8 text-center"
-      style={{ borderColor: 'var(--border)' }}
+      className="border border-dashed p-10 text-center"
+      style={{ borderColor: 'var(--border-strong)', borderRadius: 'var(--radius)' }}
     >
-      <p className="text-sm font-medium">{title}</p>
-      <p className="mx-auto mt-1 max-w-md text-xs" style={{ color: 'var(--muted)' }}>
+      <p className="text-base font-medium">{title}</p>
+      <p className="mx-auto mt-2 max-w-md text-sm" style={{ color: 'var(--muted)' }}>
         {reason}
       </p>
       {action && <div className="mt-4">{action}</div>}

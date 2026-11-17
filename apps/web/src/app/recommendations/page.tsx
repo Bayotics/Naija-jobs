@@ -99,6 +99,47 @@ function formatAge(postedAt: Date | null, firstSeenAt: Date): string {
   return `${Math.floor(days / 30)}mo ago`;
 }
 
+/** The ring colour. Same scale as the badge, so the row reads as one thing. */
+const TIER_DIAL: Record<string, string> = {
+  EXCEPTIONAL: 'var(--ok)',
+  HIGHLY_RECOMMENDED: 'var(--ok)',
+  STRONG: 'var(--accent)',
+  WORTH_CONSIDERING: 'var(--muted)',
+  LOW_PRIORITY: 'var(--muted)',
+  EXCLUDED: 'var(--danger)',
+  STALE: 'var(--warn)',
+};
+
+/**
+ * A score as a filled ring.
+ *
+ * Printed bare, 32 and 84 look like the same kind of fact and the reader has
+ * to do the comparing. The ring fills in proportion, so the gap registers
+ * before either number is read.
+ */
+function ScoreDial({ score, color, label }: { score: number; color: string; label: string }) {
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <div
+        className="score-dial grid h-14 w-14 place-items-center rounded-full"
+        style={
+          {
+            '--score': Math.max(0, Math.min(100, score)),
+            '--score-color': color,
+          } as React.CSSProperties
+        }
+      >
+        <div className="score-dial-inner grid h-11 w-11 place-items-center rounded-full">
+          <span className="tabular text-base font-semibold leading-none">{Math.round(score)}</span>
+        </div>
+      </div>
+      <span className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--muted)' }}>
+        {label}
+      </span>
+    </div>
+  );
+}
+
 export default async function RecommendationsPage({
   searchParams,
 }: {
@@ -151,6 +192,7 @@ export default async function RecommendationsPage({
           label="Shortlisted"
           value={statistics.notifiable}
           hint="clears every quality bar"
+          emphasis
         />
         <Stat label="Average score" value={statistics.averageScore} />
         <Stat
@@ -183,97 +225,129 @@ export default async function RecommendationsPage({
               const place = formatPlace(row.job);
 
               return (
-                <li key={row.job.id} className="py-4 first:pt-0 last:pb-0">
-                  {/* ── Line 1: who and what, with the two scores ──────────── */}
-                  <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
-                    <div className="flex min-w-0 items-baseline gap-2">
-                      <span className="tabular text-xs" style={{ color: 'var(--muted)' }}>
-                        #{rec.rank}
-                      </span>
-                      <div className="min-w-0">
+                <li key={row.job.id} className="job-row -mx-5 px-5 py-4">
+                  <div className="flex gap-4">
+                    {/*
+                      Both numbers, side by side, always.
+
+                      They answer different questions - "how well does this fit
+                      me" and "how good a thing is it to look at today" - and a
+                      job ranked below a better-matching one is not a bug.
+                      Showing only the composite is what makes it look like one.
+                    */}
+                    <div className="hidden shrink-0 flex-col items-center gap-2 sm:flex">
+                      <ScoreDial
+                        score={rec.finalScore}
+                        color={TIER_DIAL[rec.tier] ?? 'var(--muted)'}
+                        label="rank"
+                      />
+                      <ScoreDial score={rec.matchScore} color="var(--info)" label="match" />
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
+                        <div className="min-w-0">
+                          <div className="flex items-baseline gap-2">
+                            <span
+                              className="tabular text-xs font-medium"
+                              style={{ color: 'var(--muted)' }}
+                            >
+                              #{rec.rank}
+                            </span>
+                            <a
+                              href={href}
+                              target="_blank"
+                              rel="noreferrer noopener"
+                              className="text-base font-semibold leading-snug hover:underline"
+                            >
+                              {row.job.title}
+                            </a>
+                          </div>
+                          <div className="mt-0.5 text-sm" style={{ color: 'var(--muted)' }}>
+                            {row.job.companyNameRaw}
+                          </div>
+                        </div>
+
+                        <div className="flex shrink-0 items-center gap-2">
+                          <Badge tone={TIER_TONE[rec.tier] ?? 'neutral'}>
+                            {TIER_ICONS[rec.tier]} {rec.tier.replace(/_/g, ' ').toLowerCase()}
+                          </Badge>
+                          {/* The dials are desktop-only; on a phone the numbers
+                              still have to be somewhere. */}
+                          <span className="tabular text-sm font-semibold sm:hidden">
+                            {Math.round(rec.finalScore)}
+                            <span className="font-normal" style={{ color: 'var(--muted)' }}>
+                              {' '}
+                              · match {Math.round(rec.matchScore)}
+                            </span>
+                          </span>
+                        </div>
+                      </div>
+
+                      <div
+                        className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs"
+                        style={{ color: 'var(--muted)' }}
+                      >
+                        {place && <span>📍 {place}</span>}
+                        {salary ? (
+                          <span className="tabular">💰 {salary}</span>
+                        ) : (
+                          /*
+                            Said out loud rather than left blank. Most Nigerian
+                            postings omit salary, and a silent gap reads as "the
+                            system failed to parse it" when the employer simply
+                            never published one.
+                          */
+                          <span>💰 not stated</span>
+                        )}
+                        <span>🕑 {formatAge(row.job.postedAt, row.job.firstSeenAt)}</span>
+                        <span>via {row.job.sourceId}</span>
+                      </div>
+
+                      <p className="clamp-3 mt-2.5 text-sm" style={{ color: 'var(--muted)' }}>
+                        {rec.rankExplanation}
+                      </p>
+
+                      {rec.rankReasons.length > 0 && (
+                        <ul className="mt-2.5 flex flex-wrap gap-1.5 text-[11px]">
+                          {rec.rankReasons.slice(0, 4).map((reason, index) => (
+                            <li
+                              key={`${row.job.id}-r${index}`}
+                              className="px-2 py-0.5"
+                              style={{
+                                background: 'var(--surface-2)',
+                                color: 'var(--muted)',
+                                borderRadius: '999px',
+                              }}
+                            >
+                              {reason}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+
+                      {!rec.notificationEligible && rec.notificationBlockers.length > 0 && (
+                        <p className="mt-2.5 text-xs" style={{ color: 'var(--warn)' }}>
+                          Below the shortlist: {rec.notificationBlockers.slice(0, 2).join('; ')}
+                        </p>
+                      )}
+
+                      <div className="mt-3">
                         <a
                           href={href}
                           target="_blank"
                           rel="noreferrer noopener"
-                          className="text-base font-semibold hover:underline"
+                          className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold"
+                          style={{
+                            background: 'var(--accent-soft)',
+                            color: 'var(--accent)',
+                            borderRadius: 'var(--radius-sm)',
+                          }}
                         >
-                          {row.job.title}
+                          Open posting →
                         </a>
-                        <div className="text-sm" style={{ color: 'var(--muted)' }}>
-                          {row.job.companyNameRaw}
-                        </div>
                       </div>
                     </div>
-
-                    <div className="flex shrink-0 items-center gap-2">
-                      <Badge tone={TIER_TONE[rec.tier] ?? 'neutral'}>
-                        {TIER_ICONS[rec.tier]} {rec.tier.replace(/_/g, ' ').toLowerCase()}
-                      </Badge>
-                      <span className="tabular text-lg font-semibold leading-none">
-                        {Math.round(rec.finalScore)}
-                      </span>
-                      {/* Shown beside, never instead of, the recommendation score. */}
-                      <span className="tabular text-xs" style={{ color: 'var(--muted)' }}>
-                        match {Math.round(rec.matchScore)}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* ── Line 2: the facts you decide on ────────────────────── */}
-                  <div
-                    className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs"
-                    style={{ color: 'var(--muted)' }}
-                  >
-                    {place && <span>📍 {place}</span>}
-                    {salary ? (
-                      <span className="tabular">💰 {salary}</span>
-                    ) : (
-                      /*
-                       * Said out loud rather than left blank.
-                       *
-                       * Most Nigerian postings omit salary, and a silent gap
-                       * reads as "the system failed to parse it" when in fact
-                       * the employer never published one.
-                       */
-                      <span>💰 not stated</span>
-                    )}
-                    <span>🕑 {formatAge(row.job.postedAt, row.job.firstSeenAt)}</span>
-                    <span>via {row.job.sourceId}</span>
-                  </div>
-
-                  {/* ── Line 3: why it sits here ───────────────────────────── */}
-                  <p className="mt-2 text-sm">{rec.rankExplanation}</p>
-
-                  {rec.rankReasons.length > 0 && (
-                    <ul className="mt-2 flex flex-wrap gap-1.5 text-[11px]">
-                      {rec.rankReasons.slice(0, 5).map((reason, index) => (
-                        <li
-                          key={`${row.job.id}-r${index}`}
-                          className="rounded border px-1.5 py-0.5"
-                          style={{ borderColor: 'var(--border)', color: 'var(--muted)' }}
-                        >
-                          {reason}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-
-                  {!rec.notificationEligible && rec.notificationBlockers.length > 0 && (
-                    <p className="mt-2 text-xs" style={{ color: 'var(--warn)' }}>
-                      Below the shortlist: {rec.notificationBlockers.slice(0, 2).join('; ')}
-                    </p>
-                  )}
-
-                  <div className="mt-2">
-                    <a
-                      href={href}
-                      target="_blank"
-                      rel="noreferrer noopener"
-                      className="inline-block rounded border px-2.5 py-1 text-xs font-medium hover:underline"
-                      style={{ borderColor: 'var(--border)' }}
-                    >
-                      Open posting →
-                    </a>
                   </div>
                 </li>
               );
