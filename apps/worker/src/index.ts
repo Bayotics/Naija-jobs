@@ -62,7 +62,14 @@ interface Runtime {
 
 async function start(): Promise<Runtime> {
   loadDotenv();
-  const env = loadEnv();
+  /*
+   * Asks as the worker.
+   *
+   * It serves no HTTP and signs no sessions, so AUTH_SECRET and OPS_PASSWORD
+   * are not its business. Demanding them here once stopped every scheduled
+   * pass on a host where they happened to be blank.
+   */
+  const env = loadEnv(process.env, { role: 'worker' });
 
   const logger = createLogger({
     level: env.LOG_LEVEL,

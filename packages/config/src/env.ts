@@ -15,7 +15,15 @@ import { ConfigurationError } from './errors';
 const optionalUrl = z.string().trim().url().optional();
 const optionalNonEmpty = z.string().trim().min(1).optional();
 
-export const envSchema = z
+/**
+ * The schema, as a function of which process is asking.
+ *
+ * Everything parses identically; only the production requirements differ.
+ * `envSchema` below is this applied to the stricter role, so the exported
+ * type and every existing reference are unchanged.
+ */
+export function envSchemaFor(role: 'web' | 'worker') {
+  return z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
     APP_URL: z.string().trim().url().default('http://localhost:3000'),
@@ -112,26 +120,62 @@ export const envSchema = z
             'Set DATABASE_DRIVER=pg with a real DATABASE_URL.',
         });
       }
-      if (!env.AUTH_SECRET) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ['AUTH_SECRET'],
-          message: 'Required in production. Generate with: openssl rand -base64 32',
-        });
+      /*
+       * Required by the process that uses them, not by every process.
+       *
+       * `AUTH_SECRET` signs dashboard sessions and `OPS_PASSWORD` is the
+       * console credential. The worker serves no HTTP, issues no session and
+       * has no console — it reads neither — yet refusing to boot without them
+       * meant a blank value on the worker's host stopped all discovery,
+       * enrichment and ranking over two secrets it would never have read.
+       *
+       * That is not hypothetical. Splitting the dashboard onto its own host
+       * left the worker with its own environment, and one missing value there
+       * is the difference between a system that finds jobs overnight and one
+       * that silently does nothing.
+       *
+       * The web app still demands both, which is where the demand belongs.
+       */
+      if (role !== 'worker') {
+        if (!env.AUTH_SECRET) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['AUTH_SECRET'],
+            message: 'Required in production. Generate with: openssl rand -base64 32',
+          });
+        }
+        if (!env.OPS_PASSWORD) {
+          // A signed-session console with no credential to obtain a session is
+          // not a locked door — it is a door nobody can open, which in practice
+          // means the operator disables auth entirely.
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['OPS_PASSWORD'],
+            message:
+              'Required in production. Without it the operations console can be signed into by nobody.',
+          });
+        }
       }
-      if (!env.OPS_PASSWORD) {
-        // A signed-session console with no credential to obtain a session is
-        // not a locked door — it is a door nobody can open, which in practice
-        // means the operator disables auth entirely.
+
+      if (!env.DATABASE_URL) {
+        /*
+         * Said plainly, because the alternative is a stack trace.
+         *
+         * Without it the process gets as far as opening a connection and
+         * fails somewhere inside the driver, which reads as a database
+         * problem rather than a missing variable.
+         */
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          path: ['OPS_PASSWORD'],
-          message:
-            'Required in production. Without it the operations console can be signed into by nobody.',
+          path: ['DATABASE_URL'],
+          message: 'Required in production. Nothing can run without a database to read.',
         });
       }
     }
   });
+}
+
+export const envSchema = envSchemaFor('web');
 
 export type Env = z.infer<typeof envSchema>;
 
@@ -148,8 +192,18 @@ const HINTS: Record<string, string> = {
  * `format()` lists every problem at once — not just the first — so a misconfigured
  * deployment is fixed in one pass rather than N restarts.
  */
-export function loadEnv(source: Readonly<Record<string, string | undefined>> = process.env): Env {
-  const result = envSchema.safeParse(source);
+/**
+ * `role` says which process is asking.
+ *
+ * Only production requirements differ by role; every variable parses the same
+ * way. The default is the stricter one, so a caller that forgets to say gets
+ * the dashboard's rules rather than the worker's.
+ */
+export function loadEnv(
+  source: Readonly<Record<string, string | undefined>> = process.env,
+  options: { role?: 'web' | 'worker' } = {},
+): Env {
+  const result = envSchemaFor(options.role ?? 'web').safeParse(source);
   if (result.success) return result.data;
 
   const issues = result.error.issues.map((issue) => {

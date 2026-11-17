@@ -54,21 +54,12 @@ services:
       - key: AI_EMBEDDING_API_KEY
         sync: false
 
-      # Required in production; the process refuses to boot without them.
+      # AUTH_SECRET and OPS_PASSWORD are deliberately absent.
       #
-      # Prompted for, not generated.
-      #
-      # Render can invent these with `generateValue`, and for a single-service
-      # deployment it should. Here the dashboard lives on Vercel and has to
-      # sign sessions with the *same* AUTH_SECRET: a value Render invented
-      # would have to be fished back out of its UI and retyped, and a mismatch
-      # produces a dashboard that accepts a login then rejects every request
-      # after it — which reads as a login bug and is not one. Generating the
-      # pair once and pasting it into both platforms removes that trap.
-      - key: AUTH_SECRET
-        sync: false
-      - key: OPS_PASSWORD
-        sync: false
+      # They sign dashboard sessions and open the ops console; this process
+      # does neither. They belong in Vercel environment, with the app that
+      # reads them. Requiring them here only created a way for a blank value
+      # to stop discovery, enrichment and ranking entirely.
 
       # Four concurrent tasks on a paid instance. The ceiling here is politeness
       # to the job boards rather than CPU — the domain rate limiter is what
