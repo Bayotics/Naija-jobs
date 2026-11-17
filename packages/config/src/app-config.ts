@@ -94,6 +94,19 @@ export const appConfigSchema = z.object({
 
   retention: z
     .object({
+      /**
+       * How long a job stays in the corpus.
+       *
+       * Seven days, which is a product decision rather than a storage one: a
+       * posting older than a week has either been applied to or passed over,
+       * and either way it is noise on a page whose job is to show what to do
+       * today. A corpus that only grows ends up as an archive nobody reads.
+       *
+       * Jobs the candidate acted on are exempt — see `purgeExpired`. Deleting
+       * those would take their application history with them, which is the
+       * one thing in here that cannot be re-fetched.
+       */
+      jobDays: z.number().int().min(1).max(3650).default(7),
       rawPostingDays: z.number().int().min(1).max(3650).default(90),
       sourceRunDays: z.number().int().min(1).max(3650).default(180),
       systemEventDays: z.number().int().min(1).max(3650).default(90),

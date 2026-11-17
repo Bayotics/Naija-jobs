@@ -264,9 +264,11 @@ export class RelevanceProvider {
  * open the dashboard and look.
  */
 const PIPELINE_SCHEDULES: ReadonlyArray<{
-  taskType: 'ENRICH_JOB' | 'MATCH_JOB' | 'RANK_JOBS';
+  taskType: 'ENRICH_JOB' | 'MATCH_JOB' | 'RANK_JOBS' | 'CLEANUP';
   intervalMinutes: number;
   why: string;
+  /** Delay before a newly created schedule first fires. */
+  firstRunAfterMinutes?: number;
 }> = [
   {
     taskType: 'ENRICH_JOB',
@@ -282,6 +284,21 @@ const PIPELINE_SCHEDULES: ReadonlyArray<{
     taskType: 'RANK_JOBS',
     intervalMinutes: 60,
     why: 'Ranks what matching has scored. Hourly, so the dashboard is never more than an hour behind.',
+  },
+  {
+    taskType: 'CLEANUP',
+    intervalMinutes: 7 * 24 * 60,
+    why: 'Drains the completed task queue and purges jobs past their retention window.',
+    /*
+     * A week, not immediately.
+     *
+     * Every other schedule here is work that should already have been
+     * running, so firing on creation is right. This one deletes things, and
+     * a purge created today would run today against a corpus that has not
+     * had a week to accumulate — deleting most of it on the day the policy
+     * was introduced, which is not what "weekly" means to anyone.
+     */
+    firstRunAfterMinutes: 7 * 24 * 60,
   },
 ];
 
@@ -301,6 +318,9 @@ async function ensurePipelineSchedules(deps: ConfigurationBridgeDeps): Promise<v
       taskType: entry.taskType,
       intervalMinutes: entry.intervalMinutes,
       enabled: true,
+      ...(entry.firstRunAfterMinutes
+        ? { firstRunAt: new Date(Date.now() + entry.firstRunAfterMinutes * 60_000) }
+        : {}),
     });
   }
 }

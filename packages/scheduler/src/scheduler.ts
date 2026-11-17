@@ -80,6 +80,16 @@ export interface UpsertScheduleInput {
   payload?: Record<string, unknown>;
   /** Adaptive signals, used to stretch the interval when a source is quiet. */
   adaptive?: { emptyScans: number; freshJobsLastScan: number; healthScore: number };
+  /**
+   * When a *newly created* schedule should first fire. Ignored once the
+   * schedule exists, so it never re-dates a running one.
+   *
+   * A new schedule otherwise fires immediately, which is right for work that
+   * should have been running all along and wrong for work that deletes
+   * things: a weekly purge created today would purge today, which is not what
+   * "weekly from next week" means to the person who asked for it.
+   */
+  firstRunAt?: Date;
 }
 
 export class Scheduler {
@@ -133,7 +143,7 @@ export class Scheduler {
      */
     const nextRunAt =
       existing === null
-        ? now
+        ? (input.firstRunAt ?? now)
         : intervalChanged
           ? new Date(
               Math.min(

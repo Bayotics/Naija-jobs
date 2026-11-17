@@ -283,6 +283,25 @@ const SEED_CONFIG: Array<{ key: string; value: unknown; description: string }> =
     description: 'Below this score a job is never surfaced.',
   },
   /*
+   * A one-week corpus, at both ends.
+   *
+   * `retention.jobDays` deletes what has aged out; `pipeline.maxJobAgeDays`
+   * stops the crawler taking it in the first place. Both are needed: without
+   * the ingestion limit the system would spend a fetch, an enrichment, an
+   * embedding and a match on a month-old posting, then delete it days later
+   * having never shown it to anyone.
+   */
+  {
+    key: 'retention.jobDays',
+    value: 7,
+    description: 'Jobs older than this are deleted weekly, unless saved or applied to.',
+  },
+  {
+    key: 'pipeline.maxJobAgeDays',
+    value: 7,
+    description: 'Postings older than this are refused at ingestion.',
+  },
+  /*
    * Where this corpus's raw scores actually sit.
    *
    * Measured over 685 ranked Nigerian postings: raw range 0 to 47.6, mean

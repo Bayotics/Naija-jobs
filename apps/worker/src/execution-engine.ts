@@ -1,6 +1,7 @@
 import {
   AcquisitionRepository,
   DiscoveryRepository,
+  JobRepository,
   SourceRepository,
   type Database,
 } from '@job-intel/db';
@@ -345,8 +346,30 @@ function registerHandlers(
   });
 
   worker.register('CLEANUP', async (_task, ctx) => {
-    const [purgedTasks] = await Promise.all([deps.queue.purgeCompleted(24)]);
-    ctx.logger.info('Cleanup complete', { purgedTasks });
+    const purgedTasks = await deps.queue.purgeCompleted(24);
+
+    /*
+     * The weekly purge.
+     *
+     * A corpus that only grows becomes an archive: a posting older than a
+     * week has been applied to or passed over, and either way it is noise on
+     * a page whose job is to show what to do today.
+     *
+     * Jobs the candidate saved or applied to are kept regardless of age —
+     * every table referencing a job cascades on delete, so purging one of
+     * those would take its application record with it.
+     */
+    const config = await deps.stages.config();
+    const jobs = await new JobRepository(deps.db).purgeExpired({
+      days: config.retention.jobDays,
+    });
+
+    ctx.logger.info('Cleanup complete', {
+      purgedTasks,
+      jobsDeleted: jobs.deleted,
+      jobsKeptBecauseActedOn: jobs.keptBecauseActedOn,
+      olderThanDays: config.retention.jobDays,
+    });
   });
 
   worker.register('UPDATE_ANALYTICS', async (task, ctx) => {
@@ -392,6 +415,18 @@ function registerHandlers(
        * and matching from being spent on postings that can never surface.
        */
       relevance: await deps.relevance.get(),
+      /*
+       * The age limit, which until now was declared in configuration and read
+       * by nothing: `pipeline.maxJobAgeDays` existed, defaulted to 60, and no
+       * caller ever passed it, so ingestion fell back to the rule's own 90-day
+       * default and stored whatever it found.
+       *
+       * It belongs here rather than only in the weekly purge. Storing a
+       * month-old posting and deleting it days later still costs the fetch,
+       * the enrichment, the embedding and the match — all spent on something
+       * that was never going to be shown.
+       */
+      pipeline: { maxAgeDays: (await deps.stages.config()).pipeline.maxJobAgeDays },
       /*
        * Bounded by the task's own timeout, less a margin. A scan that outlived
        * its lease would be reclaimed and run again while still running — the
