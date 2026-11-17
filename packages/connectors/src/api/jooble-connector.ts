@@ -53,8 +53,16 @@ export const joobleConfigSchema = z.object({
   /** Jooble's `location` is free text. Empty means country-wide. */
   location: z.string().max(80).default(''),
 
-  /** Results per keyword per run. The API caps a page at 20. */
-  pagesPerKeyword: z.number().int().min(1).max(10).default(2),
+  /**
+   * Pages per keyword per run. The API caps a page at 20.
+   *
+   * One, not two. Sixteen keywords at two pages is 32 requests and ~640 items
+   * to put through ingestion, and that did not fit the 160s scan budget: the
+   * run was killed, retried, killed again, and the source re-scanned every two
+   * minutes instead of hourly — each attempt re-fetching the same 400 postings
+   * it had already stored.
+   */
+  pagesPerKeyword: z.number().int().min(1).max(10).default(1),
 
   /**
    * The country index. Changing the host changes which market is searched,
@@ -95,6 +103,7 @@ export class JoobleConnector implements Connector<JoobleConfig> {
   readonly capabilities = {
     ...DEFAULT_CAPABILITIES,
     supportsPagination: true,
+    supportsIncremental: true,
     providesStructuredSalary: false,
   };
   readonly configSchema = joobleConfigSchema;
@@ -178,17 +187,35 @@ export class JoobleConnector implements Connector<JoobleConfig> {
 
   async *discover(
     ctx: ConnectorContext<JoobleConfig>,
-  ): AsyncGenerator<SourceJobDraft, { pagesFetched: number }, void> {
+  ): AsyncGenerator<SourceJobDraft, { pagesFetched: number; cursor: Record<string, unknown> }, void> {
     const key = ctx.getSecret(ctx.config.apiKeySecret);
 
     if (!key) {
       ctx.log('warn', 'Jooble skipped: no API key configured', {
         secret: ctx.config.apiKeySecret,
       });
-      return { pagesFetched: 0 };
+      return { pagesFetched: 0, cursor: ctx.cursor ?? {} };
     }
 
+    /*
+     * Incremental, by the newest `updated` seen.
+     *
+     * An aggregator answers the same keyword with substantially the same
+     * postings every hour: one observed run discovered 418 and accepted 5,
+     * with 392 recognised as duplicates. Recognising a duplicate is not free —
+     * it costs a normalize, a hash, an identity lookup and a write — so the
+     * run spent its entire budget re-learning what it already knew, blew
+     * through the scan deadline and was retried.
+     *
+     * Filtering here, before yielding, keeps that cost in the connector where
+     * it is a date comparison. The deduplicator remains the authority on
+     * identity; this is a cheap pre-filter in front of it, not a replacement.
+     */
+    const since = readCursorDate(ctx.cursor);
+    let newest = since;
+
     let pagesFetched = 0;
+    let skippedAsSeen = 0;
 
     /*
      * The same posting comes back under several keywords — "admin" and "office
@@ -201,7 +228,14 @@ export class JoobleConnector implements Connector<JoobleConfig> {
 
     for (const keyword of ctx.config.keywords) {
       for (let page = 1; page <= ctx.config.pagesPerKeyword; page += 1) {
-        if (ctx.signal.aborted) return { pagesFetched };
+        /*
+         * An aborted run still reports its mark. The scan deadline is normal
+         * operation, not a failure, and discarding the cursor would make the
+         * next run start from nothing and hit the same deadline again.
+         */
+        if (ctx.signal.aborted) {
+          return { pagesFetched, cursor: { newestUpdated: newest?.toISOString() ?? null } };
+        }
 
         let response: JoobleResponse;
 
@@ -233,6 +267,15 @@ export class JoobleConnector implements Connector<JoobleConfig> {
           seen.add(link);
 
           const postedAt = job.updated ? new Date(job.updated) : null;
+          const validDate = postedAt && !Number.isNaN(postedAt.getTime()) ? postedAt : null;
+
+          if (validDate) {
+            if (since && validDate <= since) {
+              skippedAsSeen += 1;
+              continue;
+            }
+            if (!newest || validDate > newest) newest = validDate;
+          }
 
           const draft = sourceJobDraftSchema.safeParse({
             // The link is the identity. Jooble's numeric `id` is not stable
@@ -255,7 +298,7 @@ export class JoobleConnector implements Connector<JoobleConfig> {
             employmentTypeTexts: job.type ? [job.type] : [],
             salaryText: job.salary ?? null,
             tags: [],
-            postedAt: postedAt && !Number.isNaN(postedAt.getTime()) ? postedAt : null,
+            postedAt: validDate,
             url: link,
             raw: job,
             // Which board Jooble found it on. Worth keeping: it is the only
@@ -271,7 +314,14 @@ export class JoobleConnector implements Connector<JoobleConfig> {
       }
     }
 
-    return { pagesFetched };
+    if (skippedAsSeen > 0) {
+      ctx.log('info', 'Jooble results already seen were skipped before ingestion', {
+        skipped: skippedAsSeen,
+        since: since?.toISOString() ?? null,
+      });
+    }
+
+    return { pagesFetched, cursor: { newestUpdated: newest?.toISOString() ?? null } };
   }
 
   /**
@@ -303,4 +353,18 @@ export class JoobleConnector implements Connector<JoobleConfig> {
 
     return response.data;
   }
+}
+
+/**
+ * The high-water mark from the previous run.
+ *
+ * Absent or unparseable means "no mark": the run reads everything, which is
+ * the safe direction to fail. Treating a bad cursor as "now" would silently
+ * skip the whole corpus.
+ */
+function readCursorDate(cursor: Record<string, unknown> | null): Date | null {
+  const value = cursor?.['newestUpdated'];
+  if (typeof value !== 'string') return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
 }

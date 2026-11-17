@@ -123,6 +123,19 @@ const SEED_SOURCES: JobSource[] = [
   ),
 
   // ── MyJobMag ─────────────────────────────────────────────────────────────
+  //
+  // Off, and this one is a correction rather than a policy.
+  //
+  // It was seeded on the assumption that a sitemap implies Schema.org markup
+  // on the pages it lists. MyJobMag publishes a perfectly good sitemap —
+  // 3,772 postings under /jobs/ — and its job pages carry no structured data
+  // at all: no JSON-LD, no microdata, nothing the sitemap connector can read.
+  // So the source ran, fetched, and found nothing, which is the most
+  // expensive way for a source to fail.
+  //
+  // Using it needs an extractor written against MyJobMag's own HTML. That is
+  // a different and more brittle kind of connector, and worth doing only if
+  // the three working sources turn out to be too thin.
   jobSourceSchema.parse({
     id: 'myjobmag',
     connectorId: 'sitemap',
@@ -131,12 +144,18 @@ const SEED_SOURCES: JobSource[] = [
     accessTier: 'permitted_html',
     priority: 1,
     scheduleCron: '0 * * * *',
-    enabled: true,
+    enabled: false,
+    restrictionReason:
+      'Job pages carry no Schema.org markup, so the sitemap connector has nothing to read. ' +
+      'Needs a MyJobMag-specific HTML extractor.',
     config: {
       sitemapUrl: 'https://www.myjobmag.com/sitemapindex.xml',
-      jobUrlPattern: '/job/',
+      // `/jobs/`, not `/job/`. MyJobMag postings live at
+      // /jobs/<slug>, and the singular pattern matched none of the 3,772 URLs
+      // its sitemap publishes — the source ran clean and found nothing.
+      jobUrlPattern: '/jobs/',
       allowedHosts: ['www.myjobmag.com'],
-      pathPrefixes: ['/job/'],
+      pathPrefixes: ['/jobs/'],
       maxUrls: 150,
     },
     baseUrl: 'https://www.myjobmag.com',
@@ -186,7 +205,7 @@ const SEED_SOURCES: JobSource[] = [
         'remote',
       ],
       location: '',
-      pagesPerKeyword: 2,
+      pagesPerKeyword: 1,
       baseUrl: 'https://ng.jooble.org/api',
       apiKeySecret: 'JOOBLE_API_KEY',
     },
@@ -196,11 +215,15 @@ const SEED_SOURCES: JobSource[] = [
 
   // ── Hot Nigerian Jobs ────────────────────────────────────────────────────
   //
-  // Disabled, and the reason is operational rather than legal: in the previous
-  // deployment this source timed out on every single run and was the only one
-  // ever to reach the dead-letter queue. Registered so the gap is visible, and
-  // left off until its slowness is dealt with rather than re-importing a known
-  // failure into a fresh system.
+  // On. This was switched off on evidence from the project this was forked
+  // from, where it timed out on every run and was the only source ever to
+  // dead-letter. That judgement was never tested here, and it does not hold:
+  // measured against the live feed, it answers in 4.6s with 600 items in
+  // 509KB.
+  //
+  // Carrying a disabled source on inherited evidence is its own failure mode —
+  // the gap was visible on the Sources page with a reason that had stopped
+  // being true, which reads as diagnosed when it is merely inherited.
   jobSourceSchema.parse({
     id: 'hotnigerianjobs',
     connectorId: 'rss',
@@ -208,13 +231,24 @@ const SEED_SOURCES: JobSource[] = [
     sourceType: 'rss_feed',
     accessTier: 'permitted_html',
     priority: 2,
-    scheduleCron: '0 */2 * * *',
-    enabled: false,
-    config: { feedUrl: 'https://www.hotnigerianjobs.com/feed/rss2' },
+    scheduleCron: '0 * * * *',
+    enabled: true,
+    config: {
+      feedUrl: 'https://www.hotnigerianjobs.com/feed/rss2',
+      defaultLocationText: 'Nigeria',
+      /*
+       * Eighty, not the default two hundred.
+       *
+       * A cold run that ingests 200 items takes about 256s, and the scan
+       * budget is 160s — the run would be killed and retried forever, which
+       * is precisely the loop Jooble was stuck in. The connector is
+       * incremental, so a capped first run is not lost work: the next run
+       * resumes from the cursor and the backlog drains over a few cycles.
+       */
+      maxItems: 80,
+    },
     baseUrl: 'https://www.hotnigerianjobs.com',
-    restrictionReason:
-      'Repeatedly exceeded its 180s scan budget and dead-lettered. Enable once the timeout is diagnosed.',
-    notes: `${SEED_MARKER} Known-slow. Deliberately off.`,
+    notes: `${SEED_MARKER} RSS, 600 items per fetch. Verified responsive 2026-11-17.`,
   }),
 
   // ── Indeed, registered and refused ───────────────────────────────────────

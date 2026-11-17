@@ -10,6 +10,7 @@ import {
   ArbeitnowConnector,
   JobicyConnector,
   JoobleConnector,
+  SitemapConnector,
   RemotiveConnector,
   RedditConnector,
   SearchDiscoveryConnector,
@@ -516,6 +517,60 @@ describe('JSON API connectors', () => {
     expect(items[0]?.locationText).toBe('Europe');
     expect(items[0]?.salaryText).toBe('$100,000 - $130,000');
     expect(items[0]?.externalId).toBe('1');
+  });
+
+  it('follows a sitemap index whose children sit outside the job path', async () => {
+    /*
+     * The shape that killed MyJobMag: the index lives at /sitemapindex.xml
+     * and points at /sitemap-main-jobs.xml, while the postings are under
+     * /jobs/. Applying the job path filter to the index entries rejected
+     * every child, so nothing was collected and the run failed with
+     * "No URLs found in sitemap" — blaming the publisher for a valid file.
+     *
+     * The host check still applies to children; that is the one that stops a
+     * sitemap pointing this crawler at somebody else's server.
+     */
+    const index = `<?xml version="1.0"?><sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+      <sitemap><loc>https://board.test/sitemap-main-jobs.xml</loc></sitemap>
+      <sitemap><loc>https://elsewhere.test/sitemap-jobs.xml</loc></sitemap>
+    </sitemapindex>`;
+
+    const child = `<?xml version="1.0"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+      <url><loc>https://board.test/jobs/admin-officer-at-acme</loc></url>
+    </urlset>`;
+
+    const posting = `<html><head><script type="application/ld+json">
+      {"@type":"JobPosting","title":"Admin Officer","hiringOrganization":{"name":"Acme"},
+       "datePosted":"2026-11-16","jobLocation":{"address":{"addressCountry":"NG"}}}
+    </script></head><body></body></html>`;
+
+    const { client, mock } = testHttpClient([
+      { match: 'sitemapindex.xml', body: index },
+      { match: 'board.test/sitemap-main-jobs.xml', body: child },
+      { match: 'elsewhere.test', body: child },
+      { match: 'board.test/jobs/', body: posting },
+    ]);
+
+    const connector = new SitemapConnector();
+    const { items } = await collect(
+      connector.discover(
+        testContext({
+          config: connector.configSchema.parse({
+            sitemapUrl: 'https://board.test/sitemapindex.xml',
+            jobUrlPattern: '/jobs/',
+            allowedHosts: ['board.test'],
+            pathPrefixes: ['/jobs/'],
+          }),
+          http: client,
+        }),
+      ),
+    );
+
+    expect(items).toHaveLength(1);
+    expect(items[0]?.title).toBe('Admin Officer');
+
+    // The off-host child was refused, path filter or no path filter.
+    expect(mock.calls.some((url) => url.includes('elsewhere.test'))).toBe(false);
   });
 
   // ── Jooble ────────────────────────────────────────────────────────────────

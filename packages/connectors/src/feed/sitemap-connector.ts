@@ -179,6 +179,28 @@ export class SitemapConnector implements Connector<SitemapConfig> {
   }
 
   /**
+   * The scope a *nested sitemap document* is fetched under.
+   *
+   * Host rules in full; path prefixes dropped. `pathPrefixes` describes where
+   * the job pages live, and a sitemap index has no obligation to keep its
+   * children there — MyJobMag's index sits at `/sitemapindex.xml` and points
+   * at `/sitemap-main-jobs.xml`, while its postings are under `/job/`.
+   *
+   * Applying the job filter to the index entries rejected every child, which
+   * left nothing collected, which surfaced as `No URLs found in sitemap` — a
+   * message that blames the publisher for a file that was perfectly valid.
+   * The source failed on every scheduled run and discovered nothing at all.
+   *
+   * The host check is the one that matters here and it is unchanged: it is
+   * what stops a sitemap pointing this crawler at somebody else's server. The
+   * path filter still applies in full to the job URLs themselves, further
+   * down, which is the place it was always meant to act.
+   */
+  private indexScopeOf(scope: DomainScope): DomainScope {
+    return { ...scope, pathPrefixes: [] };
+  }
+
+  /**
    * Walks a sitemap tree, breadth-first, within depth and visit limits.
    *
    * Breadth-first on purpose: an index usually lists its most useful sitemap
@@ -206,7 +228,7 @@ export class SitemapConnector implements Connector<SitemapConfig> {
          * The starting sitemap is trusted because an operator typed it; every
          * URL *inside* a sitemap is not, and is checked before being fetched.
          */
-        if (depth > 0 && !isInScope(url, scope)) {
+        if (depth > 0 && !isInScope(url, this.indexScopeOf(scope))) {
           ctx.log('warn', 'Sitemap entry outside the configured scope was skipped', { url });
           continue;
         }
