@@ -248,21 +248,33 @@ const SEED_CONFIG: Array<{ key: string; value: unknown; description: string }> =
     value: 55,
     description: 'Below this score a job is never surfaced.',
   },
+  /*
+   * Where this corpus's raw scores actually sit.
+   *
+   * Measured over 685 ranked Nigerian postings: raw range 0 to 47.6, mean
+   * 34.7. These are short listings, mostly without a stated salary, with no
+   * tech stack and modest extraction confidence, so the factors that would
+   * carry a raw score past 60 are simply absent.
+   *
+   * Against the engine's default references of [30, 82] the top of the scale
+   * was unreachable by construction: the best job in the corpus — an 85/100
+   * match — reported 33/100, no tier above LOW_PRIORITY could be reached, and
+   * nothing was ever shortlisted. The ordering was correct throughout; the
+   * number printed next to it was being measured against a ceiling that did
+   * not exist.
+   *
+   * Calibration is monotonic, so this reorders nothing. Re-measure with
+   * `pnpm recommend`, which prints the raw range, before changing it.
+   */
   {
-    /*
-     * On. The description this replaced said notifications "ship in a later
-     * phase" — they shipped, and the flag was never flipped, so a fully
-     * working install sat with the product's whole point switched off and
-     * nothing on the dashboard explaining why no email ever arrived.
-     *
-     * Safe to default on because sending is gated separately by
-     * NOTIFICATION_DRY_RUN, which starts true. This flag decides whether
-     * notifications are *computed*; that env var decides whether they leave
-     * the machine.
-     */
-    key: 'notifications.enabled',
-    value: true,
-    description: 'Compute notifications. Actual delivery is gated by NOTIFICATION_DRY_RUN.',
+    key: 'recommendationCalibration.referenceLow',
+    value: 18,
+    description: 'Raw recommendation score mapped to the bottom of the reported scale.',
+  },
+  {
+    key: 'recommendationCalibration.referenceHigh',
+    value: 52,
+    description: 'Raw recommendation score mapped to the top of the reported scale.',
   },
   {
     /*

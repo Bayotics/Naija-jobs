@@ -181,7 +181,10 @@ export async function runRecommendation(deps: StageDependencies): Promise<StageR
     sources: new SourceRepository(deps.db),
     logger: deps.logger,
     events: deps.events,
-    config: { notification: { minimumScore: config.matching.minimumScore } },
+    config: {
+      notification: { minimumScore: config.matching.minimumScore },
+      calibration: config.recommendationCalibration,
+    },
   });
 
   /*

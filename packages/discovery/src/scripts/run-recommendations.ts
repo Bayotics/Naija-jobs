@@ -74,7 +74,10 @@ async function main(): Promise<void> {
     sources: new SourceRepository(handle.db),
     logger,
     events,
-    config: { notification: { minimumScore: config.matching.minimumScore } },
+    config: {
+      notification: { minimumScore: config.matching.minimumScore },
+      calibration: config.recommendationCalibration,
+    },
   });
 
   console.log(`\nRecommendation engine ${RECOMMENDATION_VERSION}`);

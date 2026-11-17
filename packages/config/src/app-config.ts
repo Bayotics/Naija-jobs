@@ -56,6 +56,29 @@ export const appConfigSchema = z.object({
     })
     .default({}),
 
+  /*
+   * Where the raw recommendation score range actually sits.
+   *
+   * Runtime configuration rather than a constant, because it is a property of
+   * the corpus and not of the engine. The transform is monotonic — it respaces
+   * the reported number and never reorders a job — so the only thing these
+   * control is whether the number printed beside a job carries information.
+   *
+   * The defaults match the engine's own, which suit a corpus whose raw scores
+   * reach into the 80s. A corpus of short postings with little stated salary
+   * and modest extraction confidence tops out far lower, and against the
+   * default references its best job reports a third of its real standing.
+   * Measure the raw range before changing these; `pnpm recommend` prints it.
+   */
+  recommendationCalibration: z
+    .object({
+      enabled: z.boolean().default(true),
+      referenceHigh: z.number().min(0).max(100).default(82),
+      referenceLow: z.number().min(0).max(100).default(30),
+      ceiling: z.number().min(0).max(100).default(98),
+    })
+    .default({}),
+
   ai: z
     .object({
       enabled: z.boolean().default(false),

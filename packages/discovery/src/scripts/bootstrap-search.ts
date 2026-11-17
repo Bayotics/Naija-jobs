@@ -271,6 +271,52 @@ async function ensurePreferences(
     seniorityLevels: asStrings(preferences['seniorityLevels']),
     technologies: weighted(asSkills(professional['skills']).map((s) => s.value), 'preferred'),
     excludedKeywords: asStrings(exclusions['keywords']),
+
+    /*
+     * Weights, set here rather than left to the schema defaults.
+     *
+     * The defaults were written for a software-engineering search: 30 on
+     * technical skills, the largest single weight, and 10 on visa. For an
+     * administrative, sales or customer-service role in Nigeria neither
+     * dimension can ever be evaluated — the postings carry no tech stack and a
+     * Nigerian applying in Nigeria needs no sponsorship.
+     *
+     * That is not merely wasted weight. Confidence is computed as the share of
+     * *weighted* criteria that could be judged, so 40% of the weight sitting on
+     * permanently unevaluable dimensions caps confidence near 0.3 whatever the
+     * posting says. Confidence then feeds the recommendation score, so a
+     * genuine 81/100 match ranked at 16/100: the engine was reporting, quite
+     * correctly, that it could not tell.
+     *
+     * Observed on the live corpus before this: 687 matches, mean confidence
+     * 0.34, mean recommendation score 7.3, nothing above LOW_PRIORITY.
+     *
+     * These weights put the mass where the evidence actually is — the job
+     * title, how much experience it wants, and where it is.
+     */
+    weights: {
+      titleMatch: 28,
+      experience: 16,
+      location: 14,
+      semantic: 14,
+      seniority: 8,
+      workArrangement: 8,
+      quality: 5,
+      employmentType: 4,
+      // Not zero: plenty of admin and data-entry posts do ask for Excel or a
+      // particular CRM, and that is worth a little.
+      technicalSkills: 4,
+      industry: 3,
+      education: 2,
+      companyPreference: 2,
+      // The user said salary is not a priority, and most Nigerian postings do
+      // not state one. Weighting it would score the absence, not the job.
+      salary: 2,
+      // Zero, deliberately. A Nigerian applying in Nigeria needs no
+      // sponsorship, so every posting would answer this the same way and the
+      // dimension would only dilute the ones that discriminate.
+      visa: 0,
+    },
   });
 
   console.log(`Matching preferences created (v${created.version}).`);

@@ -39,9 +39,11 @@ export async function getRecommendationContext(): Promise<RecommendationContext>
     logger: ctx.logger,
     events: ctx.events,
     config: {
-      // The one place where the recommendation layer defers to the shared
-      // runtime config, so a single "minimum score" setting means one thing.
+      // Where the recommendation layer defers to the shared runtime config, so
+      // a single "minimum score" setting means one thing, and the score the
+      // dashboard prints is spaced the same way the worker spaced it.
       notification: { minimumScore: config.matching.minimumScore },
+      calibration: config.recommendationCalibration,
     },
   });
 
