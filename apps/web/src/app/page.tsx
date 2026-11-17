@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { getServerContext } from '@/lib/db';
+import { WorkerStatus } from '@/components/worker-status';
 import { Badge, Card, EmptyState, PageHeader, Stat, Table } from '@/components/ui';
 
 export const dynamic = 'force-dynamic';
@@ -28,6 +29,8 @@ export default async function DashboardPage() {
 
   return (
     <>
+      <WorkerStatus />
+
       <PageHeader
         title="Dashboard"
         description="Discovery pipeline status and system health."

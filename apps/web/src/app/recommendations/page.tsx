@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { RECOMMENDATION_TIERS, TIER_ICONS } from '@job-intel/contracts';
 import { getRecommendationContext } from '@/lib/recommendations';
 import { Badge, Card, EmptyState, PageHeader, Stat } from '@/components/ui';
+import { WorkerStatus } from '@/components/worker-status';
 
 export const dynamic = 'force-dynamic';
 
@@ -181,6 +182,8 @@ export default async function RecommendationsPage({
 
   return (
     <div className="max-w-5xl">
+      <WorkerStatus />
+
       <PageHeader
         title="Your jobs"
         description="Everything worth your time, best first. Ranked on more than how well each one matches."

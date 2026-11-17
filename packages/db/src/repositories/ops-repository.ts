@@ -18,6 +18,7 @@ import { jobMatches } from '../schema/matching';
 import { jobDuplicates, jobRecommendations, jobSignals } from '../schema/recommendation';
 import { jobSourceRuns, jobSources } from '../schema/sources';
 import { systemEvents } from '../schema/system';
+import { workers } from '../schema/scheduling';
 
 /**
  * Operations aggregation.
@@ -251,6 +252,23 @@ export class OpsRepository {
       averageScore: Math.round((row?.avgScore ?? 0) * 100) / 100,
       averageConfidence: Math.round((row?.avgConfidence ?? 0) * 1000) / 1000,
     };
+  }
+
+  /**
+   * The newest worker heartbeat, or null if none has ever been written.
+   *
+   * One row, ordered, limit one. The question "is anything running" is asked
+   * on every dashboard render, and it must not get more expensive as the
+   * worker table accumulates rows.
+   */
+  async latestWorkerHeartbeat(): Promise<{ state: string; lastHeartbeatAt: Date } | null> {
+    const [row] = await this.db
+      .select({ state: workers.state, lastHeartbeatAt: workers.lastHeartbeatAt })
+      .from(workers)
+      .orderBy(desc(workers.lastHeartbeatAt))
+      .limit(1);
+
+    return row ?? null;
   }
 
   // ── Funnel ────────────────────────────────────────────────────────────────
