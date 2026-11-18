@@ -18,7 +18,8 @@
     "prune:jobs": "tsx src/scripts/prune-irrelevant.ts",
     "discovery": "tsx src/scripts/run-discovery-framework.ts",
     "learn": "tsx src/scripts/run-learning.ts",
-    "resume": "tsx src/scripts/run-resume.ts"
+    "resume": "tsx src/scripts/run-resume.ts",
+    "purge:jobs": "tsx src/scripts/purge-jobs.ts"
   },
   "dependencies": {
     "@job-intel/config": "workspace:*",

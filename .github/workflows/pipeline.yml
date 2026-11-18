@@ -1,0 +1,156 @@
+# The pipeline, on a schedule, with no server to keep alive.
+#
+# ── Why this exists ─────────────────────────────────────────────────────────
+#
+# The worker is the right way to run this: one process, a queue, leases, and
+# retries. But a hosted worker is a service that can be suspended, redeployed,
+# or started with one environment variable missing — and when it stops, it
+# stops silently. This system sat still for thirty-five hours that way while
+# every page reported green.
+#
+# A scheduled workflow has none of that surface. There is no service to
+# suspend, no second environment to keep in step, and a failed run is an email
+# and a red mark in a tab the owner already visits. It is strictly less
+# capable than the worker — no queue, no leases, no retries between steps —
+# and it is far harder to leave silently dead.
+#
+# Run both if you like. They coordinate through the database: discovery is
+# keyed on (source, hour), so a duplicate pass finds the work already done
+# rather than doing it twice.
+#
+# ── Setup, once ─────────────────────────────────────────────────────────────
+#
+# Settings → Secrets and variables → Actions → New repository secret:
+#
+#   DATABASE_URL          the Neon string ending in /naija_jobs
+#   ANTHROPIC_API_KEY
+#   AI_EMBEDDING_API_KEY
+#   JOOBLE_API_KEY
+#
+# Then Actions → "Hourly pipeline" → Run workflow, to prove it before trusting
+# the schedule.
+name: Hourly pipeline
+
+on:
+  schedule:
+    # Hourly. GitHub runs cron on UTC and may delay a run under load; this
+    # pipeline is idempotent, so a late or skipped hour costs nothing but the
+    # delay itself.
+    - cron: '17 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  # Never two at once. Each stage is idempotent, but two concurrent passes
+  # would spend double the API calls to reach the same state.
+  group: pipeline
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+
+    env:
+      NODE_ENV: production
+      # The direct driver, not the WebSocket one. These stages run for minutes
+      # at a time, and a long-held Neon WebSocket drops with "Connection
+      # terminated unexpectedly" partway through a matching pass.
+      DATABASE_DRIVER: pg
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      AI_EMBEDDING_PROVIDER: openai
+      AI_EMBEDDING_API_KEY: ${{ secrets.AI_EMBEDDING_API_KEY }}
+      JOOBLE_API_KEY: ${{ secrets.JOOBLE_API_KEY }}
+      CRAWLER_USER_AGENT: NaijaJobsBot/1.0
+      LOG_LEVEL: info
+      LOG_PRETTY: 'false'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # Fail here, loudly, rather than four steps later inside a driver.
+      - name: Check the database is reachable
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "DATABASE_URL is not set. Add it under Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+
+      # ── The pipeline ──────────────────────────────────────────────────────
+      #
+      # Each stage continues on error. A source being down must not stop
+      # matching from scoring what is already stored, and ranking is what the
+      # dashboard reads — it is the stage that must run even when everything
+      # upstream had a bad hour.
+      - name: Discover
+        run: pnpm discover
+        continue-on-error: true
+
+      - name: Enrich
+        run: pnpm enrich
+        continue-on-error: true
+
+      - name: Match
+        run: pnpm match
+        continue-on-error: true
+
+      - name: Rank
+        run: pnpm recommend
+        continue-on-error: true
+
+  # ── The weekly purge ──────────────────────────────────────────────────────
+  #
+  # Separate job on its own schedule rather than a step in the hourly one:
+  # deleting things once a week does not belong inside something that runs
+  # twenty-four times a day, where a mistake in the condition is a mistake made
+  # hourly.
+  purge:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: run
+
+    env:
+      NODE_ENV: production
+      DATABASE_DRIVER: pg
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+    steps:
+      - name: Only on Sundays
+        id: when
+        run: |
+          if [ "$(date -u +%u)" = "7" ] && [ "$(date -u +%H)" = "03" ]; then
+            echo "run=yes" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=no" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.when.outputs.run == 'yes'
+
+      - uses: pnpm/action-setup@v4
+        if: steps.when.outputs.run == 'yes'
+
+      - uses: actions/setup-node@v4
+        if: steps.when.outputs.run == 'yes'
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        if: steps.when.outputs.run == 'yes'
+        run: pnpm install --frozen-lockfile
+
+      - name: Purge jobs past the retention window
+        if: steps.when.outputs.run == 'yes'
+        run: pnpm purge:jobs

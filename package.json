@@ -34,7 +34,8 @@
     "bootstrap:search": "pnpm --filter @job-intel/discovery bootstrap:search",
     "prune:jobs": "pnpm --filter @job-intel/discovery prune:jobs",
     "discovery": "pnpm --filter @job-intel/discovery discovery",
-    "learn": "pnpm --filter @job-intel/discovery learn"
+    "learn": "pnpm --filter @job-intel/discovery learn",
+    "purge:jobs": "pnpm --filter @job-intel/discovery purge:jobs"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

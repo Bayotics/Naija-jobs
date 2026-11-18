@@ -111,6 +111,35 @@ export class JobRepository {
    * forever. The day it was first seen is the one honest answer available,
    * and it is never later than the real posting date.
    */
+  /**
+   * What `purgeExpired` would remove, without removing it.
+   *
+   * A separate method rather than a `dryRun` flag on the delete. A flag means
+   * the code that deletes has a mode in which it does not, and the only thing
+   * standing between a preview and a purge is one boolean read correctly —
+   * on the one operation here that cannot be undone.
+   */
+  async countExpired(options: {
+    days: number;
+    now?: Date;
+  }): Promise<{ wouldDelete: number; wouldKeep: number }> {
+    const now = options.now ?? new Date();
+    const cutoff = new Date(now.getTime() - options.days * 86_400_000);
+
+    const expired = sql`coalesce(${jobs.postedAt}, ${jobs.firstSeenAt}) < ${cutoff}`;
+    const actedOn = sql`exists (select 1 from applications a where a.job_id = ${jobs.id})`;
+
+    const [row] = await this.db
+      .select({
+        wouldDelete: sql<number>`count(*) FILTER (WHERE NOT ${actedOn})::int`,
+        wouldKeep: sql<number>`count(*) FILTER (WHERE ${actedOn})::int`,
+      })
+      .from(jobs)
+      .where(expired);
+
+    return { wouldDelete: row?.wouldDelete ?? 0, wouldKeep: row?.wouldKeep ?? 0 };
+  }
+
   async purgeExpired(options: {
     days: number;
     now?: Date;
