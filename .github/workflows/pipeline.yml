@@ -93,20 +93,51 @@ jobs:
       # dashboard reads — it is the stage that must run even when everything
       # upstream had a bad hour.
       - name: Discover
+        id: discover
         run: pnpm discover
         continue-on-error: true
 
       - name: Enrich
+        id: enrich
         run: pnpm enrich
         continue-on-error: true
 
       - name: Match
+        id: match
         run: pnpm match
         continue-on-error: true
 
       - name: Rank
+        id: rank
         run: pnpm recommend
         continue-on-error: true
+
+      # ── The gate ──────────────────────────────────────────────────────────
+      #
+      # `continue-on-error` on every stage means a run in which all four failed
+      # still reports success, which is the exact false-green this workflow
+      # exists to escape. A single bad source must not stop ranking; four
+      # failures is not a bad source, it is a broken pipeline, and it has to be
+      # a red mark.
+      #
+      # Ranking is singled out because it is what the dashboard reads. If it
+      # cannot run, the numbers on the page are stale no matter what the
+      # earlier stages managed.
+      - name: Did anything actually work?
+        run: |
+          echo "discover: ${{ steps.discover.outcome }}"
+          echo "enrich:   ${{ steps.enrich.outcome }}"
+          echo "match:    ${{ steps.match.outcome }}"
+          echo "rank:     ${{ steps.rank.outcome }}"
+
+          if [ "${{ steps.rank.outcome }}" = "failure" ]; then
+            echo "::error::Ranking failed, so the dashboard is showing stale results."
+            exit 1
+          fi
+          if [ "${{ steps.discover.outcome }}" = "failure" ]             && [ "${{ steps.match.outcome }}" = "failure" ]; then
+            echo "::error::Neither discovery nor matching ran. Nothing new will appear."
+            exit 1
+          fi
 
   # ── The weekly purge ──────────────────────────────────────────────────────
   #

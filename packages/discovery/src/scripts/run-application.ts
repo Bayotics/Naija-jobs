@@ -28,7 +28,7 @@ import { ApplicationService } from '../application-service';
 
 async function main(): Promise<void> {
   loadDotenv();
-  const env = loadEnv();
+  const env = loadEnv(process.env, { role: 'worker' });
 
   const logger = createLogger({ level: 'warn', pretty: false, base: { service: 'application-verify' } });
   const handle = await createDatabase(optionsFromEnv(env));

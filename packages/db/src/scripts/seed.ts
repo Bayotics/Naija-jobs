@@ -359,7 +359,7 @@ async function seedSkills(db: Database): Promise<number> {
 async function main(): Promise<void> {
   // Resolves .env from the workspace root, not the package directory.
   loadDotenv();
-  const env = loadEnv();
+  const env = loadEnv(process.env, { role: 'worker' });
   if (env.NODE_ENV === 'production') {
     throw new Error('Refusing to seed a production database. Seed data is for development only.');
   }

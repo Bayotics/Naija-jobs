@@ -43,7 +43,7 @@ const stars = (n: number) => '★'.repeat(n) + '☆'.repeat(5 - n);
 
 async function main() {
   loadDotenv();
-  const env = loadEnv();
+  const env = loadEnv(process.env, { role: 'worker' });
   const args = parseArgs(process.argv.slice(2));
 
   const logger = createLogger({ level: 'error', pretty: false, base: { service: 'learning-cli' } });

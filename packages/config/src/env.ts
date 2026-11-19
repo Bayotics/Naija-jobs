@@ -22,11 +22,39 @@ const optionalNonEmpty = z.string().trim().min(1).optional();
  * `envSchema` below is this applied to the stricter role, so the exported
  * type and every existing reference are unchanged.
  */
+export const DEFAULT_APP_URL = 'http://localhost:3000';
+
+/**
+ * Where the dashboard lives.
+ *
+ * Strict for the web app, which uses it as a security boundary: the origin
+ * check in `auth.ts` compares a request's origin against this, and a loose
+ * value there would weaken a CSRF defence.
+ *
+ * Lenient for the worker, which never reads it at all. A background process
+ * that crawls job boards has no origin to check and no links to build, and
+ * refusing to boot over the dashboard's address is the same defect as
+ * demanding AUTH_SECRET from it — a value belonging to another process
+ * stopping this one. It has now caused that outage twice.
+ *
+ * Falling back rather than ignoring: `loadEnv` says loudly which value it
+ * rejected, so a typo is reported rather than absorbed.
+ */
+function appUrlFor(role: 'web' | 'worker') {
+  if (role !== 'worker') return z.string().trim().url().default(DEFAULT_APP_URL);
+
+  return z.preprocess((value) => {
+    if (typeof value !== 'string') return value;
+    const trimmed = value.trim();
+    return z.string().url().safeParse(trimmed).success ? trimmed : undefined;
+  }, z.string().url().default(DEFAULT_APP_URL));
+}
+
 export function envSchemaFor(role: 'web' | 'worker') {
   return z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-    APP_URL: z.string().trim().url().default('http://localhost:3000'),
+    APP_URL: appUrlFor(role),
     LOG_LEVEL: z.enum(LOG_LEVELS).default('info'),
     LOG_PRETTY: z
       .enum(['true', 'false'])
@@ -235,7 +263,24 @@ export function loadEnv(
   source: Readonly<Record<string, string | undefined>> = process.env,
   options: { role?: 'web' | 'worker' } = {},
 ): Env {
-  const result = envSchemaFor(options.role ?? 'web').safeParse(withoutBlanks(source));
+  const role = options.role ?? 'web';
+  const normalised = withoutBlanks(source);
+
+  /*
+   * Said out loud, because the alternative is a worker that quietly builds
+   * links to localhost and a typo nobody ever finds.
+   */
+  const rawAppUrl = normalised.APP_URL;
+  if (role === 'worker' && rawAppUrl !== undefined && !z.string().url().safeParse(rawAppUrl).success) {
+    console.warn(
+      `[config] APP_URL is not a valid URL (${JSON.stringify(rawAppUrl)}). ` +
+        `Falling back to ${DEFAULT_APP_URL}. The worker does not read it, so this does not stop ` +
+        'the pipeline, but the dashboard host should be corrected — a URL needs its scheme, ' +
+        'e.g. https://example.com rather than example.com.',
+    );
+  }
+
+  const result = envSchemaFor(role).safeParse(normalised);
   if (result.success) return result.data;
 
   const issues = result.error.issues.map((issue) => {

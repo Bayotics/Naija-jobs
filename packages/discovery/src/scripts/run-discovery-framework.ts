@@ -38,7 +38,7 @@ const rule = (title: string) => `\n── ${title} ${'─'.repeat(Math.max(0, 58
 
 async function main() {
   loadDotenv();
-  const env = loadEnv();
+  const env = loadEnv(process.env, { role: 'worker' });
   const args = parseArgs(process.argv.slice(2));
 
   const logger = createLogger({ level: 'error', pretty: false, base: { service: 'discovery-cli' } });

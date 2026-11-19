@@ -61,6 +61,26 @@ describe('environment validation', () => {
     }
   });
 
+  /*
+   * The outage this prevents.
+   *
+   * APP_URL is read in exactly one place: the dashboard's origin check. The
+   * worker has no origin to check — and a malformed value on its host stopped
+   * discovery, enrichment and ranking for two days over an address it never
+   * reads. The same shape of failure as demanding AUTH_SECRET from it.
+   */
+  it('does not let the dashboard URL stop the worker', () => {
+    const env = loadEnv({ ...base, APP_URL: 'naija-jobs.vercel.app' }, { role: 'worker' });
+    expect(env.APP_URL).toBe('http://localhost:3000');
+  });
+
+  it('still rejects a malformed dashboard URL for the dashboard itself', () => {
+    // Where it is a security boundary, it stays strict.
+    expect(() => loadEnv({ ...base, APP_URL: 'naija-jobs.vercel.app' }, { role: 'web' })).toThrow(
+      ConfigurationError,
+    );
+  });
+
   it('includes an actionable hint in the formatted message', () => {
     try {
       loadEnv({ DATABASE_DRIVER: 'pg' });

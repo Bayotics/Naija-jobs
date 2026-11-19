@@ -10,7 +10,7 @@ import { sql } from 'drizzle-orm';
 
 async function main(): Promise<void> {
   loadDotenv();
-  const handle = await createDatabase(optionsFromEnv(loadEnv()));
+  const handle = await createDatabase(optionsFromEnv(loadEnv(process.env, { role: 'worker' })));
   const { db } = handle;
 
   try {

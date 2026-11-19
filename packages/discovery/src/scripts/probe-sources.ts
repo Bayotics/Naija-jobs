@@ -46,7 +46,7 @@ const DEFAULT_TARGETS = [
 
 async function main() {
   loadDotenv();
-  const env = loadEnv();
+  const env = loadEnv(process.env, { role: 'worker' });
   const logger = createLogger({ level: 'error', pretty: false, base: { service: 'probe' } });
   void logger;
 

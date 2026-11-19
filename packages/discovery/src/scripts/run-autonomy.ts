@@ -39,7 +39,7 @@ const heading = (text: string): void => {
 
 async function main(): Promise<void> {
   loadDotenv();
-  const env = loadEnv();
+  const env = loadEnv(process.env, { role: 'worker' });
 
   const logger = createLogger({ level: 'error', pretty: false, base: { service: 'autonomy' } });
   const handle = await createDatabase(optionsFromEnv(env));

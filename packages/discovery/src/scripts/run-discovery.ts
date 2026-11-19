@@ -54,7 +54,7 @@ function parseArgs(argv: string[]) {
 
 async function main(): Promise<void> {
   loadDotenv();
-  const env = loadEnv();
+  const env = loadEnv(process.env, { role: 'worker' });
   const args = parseArgs(process.argv.slice(2));
 
   const logger = createLogger({

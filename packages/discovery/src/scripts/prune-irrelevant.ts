@@ -25,7 +25,7 @@ import { buildRelevanceProfile, judgeRelevance } from '../pipeline/relevance';
 async function main(): Promise<void> {
   loadDotenv();
   const apply = process.argv.includes('--apply');
-  const handle = await createDatabase(optionsFromEnv(loadEnv()));
+  const handle = await createDatabase(optionsFromEnv(loadEnv(process.env, { role: 'worker' })));
 
   try {
     const active = await new ProfileRepository(handle.db).getActiveProfile();

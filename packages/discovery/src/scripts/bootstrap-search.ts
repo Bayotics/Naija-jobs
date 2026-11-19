@@ -30,7 +30,7 @@ import {
 
 async function main(): Promise<void> {
   loadDotenv();
-  const env = loadEnv();
+  const env = loadEnv(process.env, { role: 'worker' });
   const handle = await createDatabase(optionsFromEnv(env));
 
   try {

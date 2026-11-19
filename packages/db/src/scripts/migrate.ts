@@ -12,7 +12,7 @@ import { runMigrations } from '../migrate';
 async function main(): Promise<void> {
   // Resolves .env from the workspace root, not the package directory.
   loadDotenv();
-  const env = loadEnv();
+  const env = loadEnv(process.env, { role: 'worker' });
   console.log(`[migrate] driver=${env.DATABASE_DRIVER} env=${env.NODE_ENV}`);
 
   const handle = await createDatabase(optionsFromEnv(env));
