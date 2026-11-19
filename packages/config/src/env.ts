@@ -193,6 +193,38 @@ const HINTS: Record<string, string> = {
  * deployment is fixed in one pass rather than N restarts.
  */
 /**
+ * A variable set to the empty string is a variable that was not set.
+ *
+ * ── Why this is not pedantry ────────────────────────────────────────────────
+ *
+ * Hosting platforms do not distinguish "absent" from "present and blank". A
+ * blueprint that declares six secrets renders six text boxes, and a box left
+ * alone is submitted as "". The process then receives the variable — so every
+ * `.optional()` in the schema above stops applying — and is rejected by the
+ * rule beneath it: `CRAWLER_CONTACT_EMAIL` fails `.email()`, every
+ * `optionalNonEmpty` fails `.min(1)`.
+ *
+ * The result is a process that refuses to boot over a value it would never
+ * have read, reported as a crash rather than as the blank field it is. The
+ * deploy goes green — the image built fine — and the service dies seconds
+ * later, which is the least legible failure this system can produce.
+ *
+ * Blank is therefore normalised to absent before validation. Nothing is
+ * weakened: a variable that is genuinely required is still required, and now
+ * fails with "Required in production" naming it, instead of a regex
+ * complaint about an empty string.
+ */
+function withoutBlanks(
+  source: Readonly<Record<string, string | undefined>>,
+): Record<string, string | undefined> {
+  const out: Record<string, string | undefined> = {};
+  for (const [key, value] of Object.entries(source)) {
+    out[key] = typeof value === 'string' && value.trim() === '' ? undefined : value;
+  }
+  return out;
+}
+
+/**
  * `role` says which process is asking.
  *
  * Only production requirements differ by role; every variable parses the same
@@ -203,7 +235,7 @@ export function loadEnv(
   source: Readonly<Record<string, string | undefined>> = process.env,
   options: { role?: 'web' | 'worker' } = {},
 ): Env {
-  const result = envSchemaFor(options.role ?? 'web').safeParse(source);
+  const result = envSchemaFor(options.role ?? 'web').safeParse(withoutBlanks(source));
   if (result.success) return result.data;
 
   const issues = result.error.issues.map((issue) => {

@@ -1,0 +1,16 @@
+-- The event a worker emits when it cannot start.
+--
+-- Added by hand for the same reason 0019 was: `SYSTEM_EVENTS` in
+-- `@job-intel/contracts` is the source of this enum, and a name added there
+-- does not reach the database until a migration says so. Drizzle generates no
+-- diff for an enum whose members changed.
+--
+-- The failure mode is silent in the worst possible way. `EventRecorder`
+-- catches sink errors on purpose — observability must never take down the
+-- thing it observes — so an event name the database does not know is dropped
+-- with one log line and nothing else. The event that reports a crash would
+-- itself have been swallowed.
+--
+-- `job-events-enum.test.ts` now asserts every name in the union is accepted by
+-- the enum, so the next one to drift fails a test rather than a deployment.
+ALTER TYPE "public"."system_event_name" ADD VALUE IF NOT EXISTS 'SYSTEM_START_FAILED';

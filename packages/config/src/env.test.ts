@@ -27,6 +27,40 @@ describe('environment validation', () => {
     }
   });
 
+  /*
+   * The blank-secret crash.
+   *
+   * A hosting blueprint that declares secrets renders one text box each, and a
+   * box left alone arrives as "". The variable is then present, so every
+   * `.optional()` stops applying, and the process refuses to boot over a
+   * credential it would never have read. The build goes green and the service
+   * dies seconds later.
+   */
+  it('treats a blank variable as unset rather than as an invalid value', () => {
+    const env = loadEnv({
+      ...base,
+      CRAWLER_CONTACT_EMAIL: '',
+      ANTHROPIC_API_KEY: '   ',
+      JOOBLE_API_KEY: '',
+    });
+
+    expect(env.CRAWLER_CONTACT_EMAIL).toBeUndefined();
+    expect(env.ANTHROPIC_API_KEY).toBeUndefined();
+  });
+
+  it('still refuses to boot when a blank variable was a required one', () => {
+    // Normalising blanks must not turn a missing database into a default.
+    try {
+      loadEnv({ NODE_ENV: 'production', DATABASE_DRIVER: 'pg', DATABASE_URL: '  ' });
+      expect.unreachable('should have thrown');
+    } catch (error) {
+      expect(error).toBeInstanceOf(ConfigurationError);
+      const issue = (error as ConfigurationError).issues.find((i) => i.key === 'DATABASE_URL');
+      // Named as the missing variable it is, not as a failed string rule.
+      expect(issue?.problem).toContain('Required');
+    }
+  });
+
   it('includes an actionable hint in the formatted message', () => {
     try {
       loadEnv({ DATABASE_DRIVER: 'pg' });

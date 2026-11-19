@@ -11,6 +11,16 @@ import { z } from 'zod';
 export const SYSTEM_EVENTS = [
   // Lifecycle
   'SYSTEM_STARTED',
+  /*
+   * The worker tried to boot and could not.
+   *
+   * Recorded by the process that failed, into the database it could still
+   * reach, because the alternative is a stack trace in a hosting platform's
+   * log viewer that nobody is looking at. A worker that dies on startup writes
+   * no heartbeat, runs no stage and produces no other evidence of itself: the
+   * dashboard shows a system that is merely quiet.
+   */
+  'SYSTEM_START_FAILED',
   'SYSTEM_SHUTDOWN',
   'CONFIG_LOADED',
   'CONFIG_CHANGED',

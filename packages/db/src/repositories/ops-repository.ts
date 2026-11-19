@@ -271,6 +271,26 @@ export class OpsRepository {
     return row ?? null;
   }
 
+  /**
+   * The last time a worker tried to start and could not.
+   *
+   * A worker that crashes during startup never writes a heartbeat, so the
+   * heartbeat table reports the same thing for "crashed on boot" as for
+   * "cleanly stopped" and for "never deployed". The distinction is the whole
+   * answer, and it is the one the hosting platform keeps to itself. The
+   * failing process writes it here instead.
+   */
+  async latestStartFailure(): Promise<{ message: string | null; at: Date } | null> {
+    const [row] = await this.db
+      .select({ message: systemEvents.message, at: systemEvents.createdAt })
+      .from(systemEvents)
+      .where(eq(systemEvents.name, 'SYSTEM_START_FAILED'))
+      .orderBy(desc(systemEvents.createdAt))
+      .limit(1);
+
+    return row ?? null;
+  }
+
   // ── Funnel ────────────────────────────────────────────────────────────────
 
   async funnelCounts(profileId: string | null, windowHours: number): Promise<FunnelCounts> {

@@ -318,11 +318,91 @@ start()
       handle('WORKER_ONCE');
     }
   })
-  .catch((error: unknown) => {
-    if (error instanceof ConfigurationError) {
-      console.error(`\n[worker] ${error.format()}`);
-    } else {
-      console.error('[worker] failed to start:', error);
-    }
+  .catch(async (error: unknown) => {
+    const detail =
+      error instanceof ConfigurationError
+        ? error.format()
+        : error instanceof Error
+          ? (error.stack ?? error.message)
+          : String(error);
+
+    console.error('[worker] failed to start:', detail);
+    await reportStartFailure(detail);
     process.exit(1);
   });
+
+/**
+ * Tells the database that this process could not start.
+ *
+ * -- Why a process writes its own obituary ----------------------------------
+ *
+ * A worker that dies during startup leaves no trace anywhere the owner looks.
+ * It writes no heartbeat, so the liveness banner can say "stopped" but never
+ * why. It runs no stage, so no source has a failure to report. The deploy goes
+ * green, because the image built perfectly. The only record is a stack trace
+ * in a hosting platform's log viewer, behind a login, in a tab nobody opens --
+ * and this system spent two days dead in exactly that way, with every
+ * dashboard it owns reporting health.
+ *
+ * So the failure is written where failures are visible: the same database the
+ * dashboard reads. The next page load says what happened, in words, without
+ * anyone opening a hosting console.
+ *
+ * -- Why it is allowed to fail ----------------------------------------------
+ *
+ * This runs on a path where something has already gone wrong, and one likely
+ * cause is the database itself. It is therefore best-effort and strictly
+ * bounded: its own single connection, a hard timeout, every error swallowed. A
+ * reporter that hung would turn a crash that restarts in seconds into a
+ * container that has to be killed; a reporter that threw would replace the
+ * real error with its own.
+ */
+async function reportStartFailure(detail: string): Promise<void> {
+  const connectionString = process.env.DATABASE_URL?.trim();
+  if (!connectionString) return; // Nowhere to write it. The console line stands.
+
+  const timeout = new Promise<void>((resolve) => {
+    setTimeout(resolve, 10_000).unref();
+  });
+
+  const write = (async () => {
+    let handle: DatabaseHandle | undefined;
+    try {
+      handle = await createDatabase({
+        /*
+         * Built by hand rather than from `optionsFromEnv`, because parsing the
+         * environment is one of the things that may just have failed. One
+         * connection, not a pool: this process is about to exit.
+         */
+        driver: process.env.DATABASE_DRIVER === 'neon' ? 'neon' : 'pg',
+        connectionString,
+        poolMax: 1,
+      });
+
+      await new EventRepository(handle.db).record({
+        name: 'SYSTEM_START_FAILED',
+        severity: 'error',
+        // Bounded: a stack trace is diagnostic for a few lines and a storage
+        // problem after that.
+        message: detail.slice(0, 2000),
+        traceId: null,
+        sourceId: null,
+        jobId: null,
+        runId: null,
+        data: { hostname: hostname(), pid: process.pid },
+      });
+
+      console.error('[worker] recorded SYSTEM_START_FAILED. The dashboard will show it.');
+    } catch {
+      // Already failing. Saying so twice helps nobody.
+    } finally {
+      try {
+        await handle?.close();
+      } catch {
+        // Closing a connection that never opened is not news.
+      }
+    }
+  })();
+
+  await Promise.race([write, timeout]);
+}

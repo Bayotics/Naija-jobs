@@ -34,7 +34,43 @@ function since(at: Date): string {
 export async function WorkerStatus() {
   const ctx = await getServerContext();
 
-  const worker = await new OpsRepository(ctx.handle.db).latestWorkerHeartbeat();
+  const ops = new OpsRepository(ctx.handle.db);
+  const [worker, startFailure] = await Promise.all([
+    ops.latestWorkerHeartbeat(),
+    ops.latestStartFailure(),
+  ]);
+
+  /*
+   * A worker that crashed on boot outranks every other reading on this page.
+   *
+   * It is also the case the heartbeat alone cannot describe: a process that
+   * dies during startup writes no heartbeat, so "crashed ten minutes ago"
+   * and "stopped cleanly two days ago" and "never deployed" all look
+   * identical from the heartbeat table. Only the failing process knows, and
+   * it records what it knew on the way out.
+   *
+   * Shown only when it is newer than the last heartbeat; otherwise it is an
+   * old crash the worker has since recovered from, and reporting it as
+   * current would be its own kind of lie.
+   */
+  const crashedOnBoot =
+    startFailure !== null &&
+    (worker === null || startFailure.at.getTime() > worker.lastHeartbeatAt.getTime());
+
+  if (crashedOnBoot) {
+    return (
+      <Banner tone="danger" title={`The worker failed to start ${since(startFailure.at)}`}>
+        It reached the database to report this and got no further, so nothing is being
+        discovered, enriched or ranked. It said:
+        <span
+          className="mt-2 block overflow-x-auto whitespace-pre-wrap p-2 text-[12px]"
+          style={{ background: 'var(--surface-2)', borderRadius: '4px' }}
+        >
+          {startFailure.message ?? 'no detail recorded'}
+        </span>
+      </Banner>
+    );
+  }
 
   // Never seen a worker at all: a fresh install, not a failure. Say which.
   if (!worker) {
