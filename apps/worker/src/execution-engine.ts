@@ -110,7 +110,31 @@ export function createExecutionEngine(options: EngineOptions): ExecutionEngine {
   });
 
   const worker = new Worker(
-    { db, queue, logger },
+    {
+      db,
+      queue,
+      logger,
+      /*
+       * Close the loop between a schedule firing and the schedule knowing how
+       * it went.
+       *
+       * `Scheduler.recordRun` existed, wrote `last_successful_run_at` and
+       * `last_failure_at`, and had no caller — so both columns were null for
+       * every schedule in the system no matter what happened. A schedule that
+       * fired and threw every hour was indistinguishable from one that fired
+       * and worked, which is precisely the blindness that let this pipeline
+       * sit dead for two days while every surface reported health.
+       *
+       * The scheduler stamps `scheduleId` into the payload of every task it
+       * enqueues; a task without one was enqueued directly and has no schedule
+       * to report to.
+       */
+      onOutcome: async (task, outcome) => {
+        const scheduleId = (task.payload as { scheduleId?: unknown } | null)?.scheduleId;
+        if (typeof scheduleId !== 'string') return;
+        await scheduler.recordRun(scheduleId, outcome);
+      },
+    },
     {
       workerId: `${instanceId}-worker`,
       concurrency: options.concurrency ?? 4,

@@ -826,6 +826,95 @@ describe('worker runtime (Parts 29–32)', () => {
     expect(worker.currentState).toBe('STOPPED');
   });
 
+  /*
+   * The hook that closes the loop between a schedule and its own history.
+   *
+   * `Scheduler.recordRun` writes `last_successful_run_at` and
+   * `last_failure_at`, and nothing called it, so both columns stayed null for
+   * every schedule however the runs went. A schedule that fired and threw
+   * every hour read exactly like one that fired and worked.
+   */
+  it('reports the outcome of every task it finishes', async () => {
+    const outcomes: Array<{ type: string; outcome: string; scheduleId: unknown }> = [];
+
+    const worker = new Worker(
+      {
+        db: handle.db,
+        queue,
+        logger,
+        onOutcome: (task, outcome) => {
+          outcomes.push({
+            type: task.type,
+            outcome,
+            scheduleId: (task.payload as { scheduleId?: unknown } | null)?.scheduleId,
+          });
+        },
+      },
+      { workerId: 'w-outcome', idlePollMs: 10, busyPollMs: 5 },
+    )
+      .register('SOURCE_SCAN', async () => undefined)
+      .register('ENRICH_JOB', async () => {
+        throw new Error('connection timeout');
+      });
+
+    await queue.enqueue({
+      type: 'SOURCE_SCAN',
+      key: ['reported-ok'],
+      payload: { scheduleId: 'schedule-1' },
+    });
+    await queue.enqueue({
+      type: 'ENRICH_JOB',
+      key: ['reported-bad'],
+      payload: { scheduleId: 'schedule-2' },
+    });
+
+    await worker.start();
+    await waitFor(() => outcomes.length >= 2, 3_000);
+    await worker.stop();
+
+    expect(outcomes).toContainEqual({
+      type: 'SOURCE_SCAN',
+      outcome: 'success',
+      scheduleId: 'schedule-1',
+    });
+    expect(outcomes).toContainEqual({
+      type: 'ENRICH_JOB',
+      outcome: 'failure',
+      scheduleId: 'schedule-2',
+    });
+  });
+
+  it('does not let a failing outcome listener fail the task', async () => {
+    // The task is finished and the queue already knows. A listener that threw
+    // would be caught by the handler's own catch, counted as a failure and
+    // retried: a task that succeeded, recorded as failed, because the
+    // bookkeeping did.
+    let runs = 0;
+
+    const worker = new Worker(
+      {
+        db: handle.db,
+        queue,
+        logger,
+        onOutcome: () => {
+          throw new Error('reporting is broken');
+        },
+      },
+      { workerId: 'w-outcome-throws', idlePollMs: 10, busyPollMs: 5 },
+    ).register('SOURCE_SCAN', async () => {
+      runs += 1;
+    });
+
+    await queue.enqueue({ type: 'SOURCE_SCAN', key: ['listener-throws'] });
+    await worker.start();
+
+    await waitFor(() => worker.stats.processed === 1, 3_000);
+    await worker.stop();
+
+    expect(runs).toBe(1);
+    expect(worker.stats.failed).toBe(0);
+  });
+
   it('retries a failing handler rather than losing the task', async () => {
     let attempts = 0;
 

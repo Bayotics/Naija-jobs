@@ -71,6 +71,14 @@ export interface WorkerDependencies {
   logger: Logger;
   /** Maps a failure to a class, so retry policy can be applied. */
   classifyFailure?: (error: unknown) => { failureClass: FailureClass; retryAfterMs?: number | null };
+  /**
+   * Told the outcome of every task, after the queue has recorded it.
+   *
+   * A hook rather than a direct call to the scheduler, so the runtime keeps
+   * knowing nothing about schedules: it reports what happened and the caller
+   * decides what that means. Best-effort by contract — see the call site.
+   */
+  onOutcome?: (task: Task, outcome: 'success' | 'failure') => Promise<void> | void;
 }
 
 /**
@@ -445,6 +453,8 @@ export class Worker {
           taskId: task.taskId,
         });
       }
+
+      await this.report(task, 'success');
     } catch (error) {
       this.failed += 1;
 
@@ -467,8 +477,32 @@ export class Worker {
         outcome: result.outcome,
         reason: result.reason,
       });
+
+      await this.report(task, 'failure');
     } finally {
       clearTimeout(timer);
+    }
+  }
+
+  /**
+   * Reports an outcome, and never lets reporting become a failure of its own.
+   *
+   * The task is already finished and the queue already knows. If the listener
+   * throws here it would be caught by the handler's own catch block, counted
+   * as a second failure and retried — a task that succeeded would be recorded
+   * as having failed because the bookkeeping did.
+   */
+  private async report(task: Task, outcome: 'success' | 'failure'): Promise<void> {
+    if (!this.deps.onOutcome) return;
+
+    try {
+      await this.deps.onOutcome(task, outcome);
+    } catch (error) {
+      this.deps.logger.warn('Failed to report a task outcome', {
+        workerId: this.workerId,
+        taskId: task.taskId,
+        err: error,
+      });
     }
   }
 }
