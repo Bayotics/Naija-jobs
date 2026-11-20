@@ -20,6 +20,11 @@
 #
 # ── Setup, once ─────────────────────────────────────────────────────────────
 #
+# Until the secrets below exist, this workflow does nothing: the preflight job
+# finds no DATABASE_URL and the rest of the run is skipped. That is deliberate.
+# A spare that cannot run is not a failure worth an email every hour, and a
+# mailbox full of ignorable red is how a real failure goes unread.
+#
 # Settings → Secrets and variables → Actions → New repository secret:
 #
 #   DATABASE_URL          the Neon string ending in /naija_jobs
@@ -27,8 +32,9 @@
 #   AI_EMBEDDING_API_KEY
 #   JOOBLE_API_KEY
 #
-# Then Actions → "Hourly pipeline" → Run workflow, to prove it before trusting
-# the schedule.
+# Add them and the next scheduled run picks them up by itself. Nothing else
+# here has to change. Until then, "Run workflow" by hand fails loudly rather
+# than skipping — asking for a run and getting silence is its own kind of lie.
 name: Hourly pipeline
 
 on:
@@ -46,7 +52,41 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # ── Is this spare even wired up? ──────────────────────────────────────────
+  #
+  # The worker on Render is the live runner. This workflow is the spare, and a
+  # spare with no credentials is dormant, not broken. Separating "not
+  # configured" from "configured and failing" is the whole point: the first is
+  # a notice, the second is a red mark that means something.
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      configured: ${{ steps.check.outputs.configured }}
+    steps:
+      - name: Are the secrets here?
+        id: check
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -n "$DATABASE_URL" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "configured=false" >> "$GITHUB_OUTPUT"
+
+          # Asked for by hand, so say so. Left to the schedule, stay quiet.
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "::error::No DATABASE_URL secret. Add it under Settings → Secrets and variables → Actions, then run this again."
+            exit 1
+          fi
+
+          echo "::notice::Dormant: no DATABASE_URL secret is set, so there is nothing for this workflow to run. The Render worker is unaffected."
+
   run:
+    needs: preflight
+    if: needs.preflight.outputs.configured == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 50
 
@@ -77,14 +117,6 @@ jobs:
 
       - name: Install
         run: pnpm install --frozen-lockfile
-
-      # Fail here, loudly, rather than four steps later inside a driver.
-      - name: Check the database is reachable
-        run: |
-          if [ -z "$DATABASE_URL" ]; then
-            echo "DATABASE_URL is not set. Add it under Settings → Secrets and variables → Actions."
-            exit 1
-          fi
 
       # ── The pipeline ──────────────────────────────────────────────────────
       #
@@ -146,10 +178,10 @@ jobs:
   # twenty-four times a day, where a mistake in the condition is a mistake made
   # hourly.
   purge:
-    if: github.event_name == 'schedule'
+    if: github.event_name == 'schedule' && needs.preflight.outputs.configured == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: run
+    needs: [preflight, run]
 
     env:
       NODE_ENV: production
