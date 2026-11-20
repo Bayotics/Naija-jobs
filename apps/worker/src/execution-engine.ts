@@ -17,6 +17,7 @@ import {
   TaskQueue,
   Worker,
   WorkerRegistry,
+  scanTaskKey,
   type DesiredProfileState,
 } from '@job-intel/scheduler';
 import { RelevanceProvider, reconcileConfiguration } from './configuration-bridge';
@@ -496,14 +497,51 @@ function registerHandlers(
 
     const sources = await new SourceRepository(deps.db).list({ enabledOnly: true });
 
+    /*
+     * The key has to be the one the scheduler would build for the same scan.
+     *
+     * Every source here also has its own SOURCE_SCAN schedule, so both paths
+     * enqueue a scan of the same source in the same hour. They collapse into
+     * one task only if they agree on the key, and an hour-truncated timestamp
+     * does not agree with `scanWindow` — it differs by the two characters of
+     * ":00". That near-miss had every source fetched twice an hour, which is
+     * free nowhere and costs a daily quota at Jooble.
+     *
+     * The interval is what makes the windows line up: a source scanned every
+     * two hours buckets differently from one scanned every hour, and taking
+     * the window from its own schedule is what keeps a source on the cadence
+     * it was configured with rather than the fan-out's.
+     *
+     * Both sides go through `scanTaskKey` rather than each formatting a key
+     * of their own, because the last two characters of a timestamp are not
+     * something two call sites should be trusted to agree on forever.
+     */
+    const schedules = await deps.scheduler.listSchedules({ profileId, enabledOnly: true });
+    const scanSchedules = new Map(
+      schedules
+        .filter((entry) => entry.taskType === 'SOURCE_SCAN' && entry.sourceId !== null)
+        .map((entry) => [entry.sourceId as string, entry] as const),
+    );
+
+    const now = new Date();
     const enqueued = await deps.queue.enqueueMany(
-      sources.map((source) => ({
-        type: 'SOURCE_SCAN' as const,
-        key: [profileId, source.id, new Date().toISOString().slice(0, 13)],
-        profileId,
-        sourceId: source.id,
-        payload: { scheduledBy: task.taskId },
-      })),
+      sources.map((source) => {
+        const schedule = scanSchedules.get(source.id);
+        const intervalMinutes = schedule?.intervalMinutes ?? 60;
+
+        return {
+          type: 'SOURCE_SCAN' as const,
+          idempotencyKey: scanTaskKey('SOURCE_SCAN', profileId, source.id, now, intervalMinutes),
+          profileId,
+          sourceId: source.id,
+          payload: {
+            scheduledBy: task.taskId,
+            // Carried so that whichever path wins the race, the schedule still
+            // learns how its own run went.
+            ...(schedule ? { scheduleId: schedule.scheduleId } : {}),
+          },
+        };
+      }),
     );
 
     ctx.logger.info('Profile scan fanned out', {

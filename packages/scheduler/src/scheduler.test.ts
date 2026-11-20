@@ -20,7 +20,7 @@ import { createLogger } from '@job-intel/observability';
 import { TaskQueue } from './task-queue';
 import { DeadLetterQueue } from './dead-letters';
 import { CoordinationService } from './coordination';
-import { Scheduler } from './scheduler';
+import { Scheduler, scanTaskKey } from './scheduler';
 import { Worker, WorkerRegistry } from './worker-runtime';
 import { ReconciliationService, SystemHealthService } from './reconciliation';
 
@@ -254,6 +254,51 @@ describe('idempotency (Part 4)', () => {
     expect(second.created).toBe(false);
     expect(second.reason).toContain('already queued');
     expect(await queue.depth()).toBe(1);
+  });
+
+  /*
+   * The profile-scan fan-out and the per-source schedule both enqueue a scan
+   * of the same source in the same window. For months they each built their
+   * own key and the two differed by the ":00" on the end, so nothing collapsed
+   * and every source was fetched twice an hour. These pin the agreement.
+   */
+  it('gives the fan-out and the schedule the same key for one scan', async () => {
+    const at = new Date('2026-08-21T13:17:00Z');
+    const profileId = '11111111-1111-4111-8111-111111111111';
+
+    const fromScheduler = await queue.enqueue({
+      type: 'SOURCE_SCAN',
+      key: [profileId, 'reddit', scanWindow(at, 60), null],
+      profileId,
+      sourceId: 'reddit',
+    });
+
+    const fromFanOut = await queue.enqueue({
+      type: 'SOURCE_SCAN',
+      idempotencyKey: scanTaskKey('SOURCE_SCAN', profileId, 'reddit', at, 60),
+      profileId,
+      sourceId: 'reddit',
+    });
+
+    expect(fromScheduler.created).toBe(true);
+    expect(fromFanOut.created).toBe(false);
+    expect(fromFanOut.reason).toContain('already queued');
+  });
+
+  it('keeps each source on the cadence it was configured with', () => {
+    const at = new Date('2026-08-21T13:17:00Z');
+
+    // An hourly source and a two-hourly one must not share a window, or the
+    // slower source would be dragged to the faster schedule's rate.
+    expect(scanTaskKey('SOURCE_SCAN', null, 'reddit', at, 60)).not.toBe(
+      scanTaskKey('SOURCE_SCAN', null, 'reddit', at, 120),
+    );
+
+    // An hour-truncated timestamp is the near-miss that caused the duplicate
+    // fetches; it must not be mistaken for the real window.
+    expect(scanTaskKey('SOURCE_SCAN', null, 'reddit', at, 60)).not.toBe(
+      `SOURCE_SCAN:reddit:${at.toISOString().slice(0, 13)}`,
+    );
   });
 
   it('produces the same key for every enqueue inside one window', () => {
