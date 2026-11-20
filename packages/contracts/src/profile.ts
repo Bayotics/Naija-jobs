@@ -110,8 +110,8 @@ export type LocationPreference = z.infer<typeof locationPreferenceSchema>;
 
 export const jobPreferencesSchema = z.object({
   desiredTitles: z.array(z.string().trim().min(1).max(200)).default([]),
-  location: locationPreferenceSchema.default({}),
-  salary: salaryExpectationSchema.default({}),
+  location: locationPreferenceSchema.prefault({}),
+  salary: salaryExpectationSchema.prefault({}),
   employmentTypes: z.array(z.enum(EMPLOYMENT_TYPES)).default([]),
   seniorityLevels: z.array(z.enum(SENIORITY_LEVELS)).default([]),
   /**
@@ -147,15 +147,15 @@ export const candidateProfilePayloadSchema = z.object({
   /** Bumped when the shape changes, so old versions remain readable. */
   schemaVersion: z.literal(1).default(1),
   identity: candidateIdentitySchema,
-  professional: professionalProfileSchema.default({}),
-  preferences: jobPreferencesSchema.default({}),
-  exclusions: exclusionPreferencesSchema.default({}),
+  professional: professionalProfileSchema.prefault({}),
+  preferences: jobPreferencesSchema.prefault({}),
+  exclusions: exclusionPreferencesSchema.prefault({}),
   /**
    * Extensibility hatch. Preferences the schema does not model yet are stored
    * verbatim and passed to the matching engine, so a new preference can be
    * introduced from the UI before it is formally added above.
    */
-  custom: z.record(z.string(), z.unknown()).default({}),
+  custom: z.record(z.string(), z.unknown()).prefault({}),
 });
 export type CandidateProfilePayload = z.infer<typeof candidateProfilePayloadSchema>;
 

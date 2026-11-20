@@ -301,7 +301,7 @@ export const qualityAssessmentSchema = z.object({
     )
     .default([]),
   /** Component sub-scores, so a score is explainable rather than opaque. */
-  components: z.record(z.string(), z.number()).default({}),
+  components: z.record(z.string(), z.number()).prefault({}),
 });
 export type QualityAssessment = z.infer<typeof qualityAssessmentSchema>;
 

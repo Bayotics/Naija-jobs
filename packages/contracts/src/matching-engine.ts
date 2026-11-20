@@ -206,7 +206,7 @@ export const matchTraceSchema = z.object({
   llmModel: z.string().max(120).nullable().default(null),
 
   /** Weights actually used, after normalisation. */
-  weightsUsed: z.record(z.string(), z.number()).default({}),
+  weightsUsed: z.record(z.string(), z.number()).prefault({}),
   /** Raw component scores before weighting. */
   componentScores: z.array(componentScoreSchema).default([]),
 
@@ -269,7 +269,7 @@ export const matchingConfigSchema = z.object({
   maxLlmAdjustment: z.number().min(0).max(50).default(10),
   /** Maximum points behavioural signals may move a score. */
   maxBehavioralAdjustment: z.number().min(0).max(20).default(5),
-  thresholds: recommendationThresholdsSchema.default({}),
+  thresholds: recommendationThresholdsSchema.prefault({}),
 
   /** LLM gating — the cost control. */
   llm: z
@@ -282,6 +282,6 @@ export const matchingConfigSchema = z.object({
       maxCallsPerRun: z.number().int().min(0).max(1000).default(50),
       model: z.string().max(120).default('claude-haiku-4-5'),
     })
-    .default({}),
+    .prefault({}),
 });
 export type MatchingConfig = z.infer<typeof matchingConfigSchema>;

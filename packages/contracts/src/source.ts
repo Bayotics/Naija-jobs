@@ -62,8 +62,8 @@ export const jobSourceSchema = z.object({
    */
   priority: z.number().int().min(0).max(3).default(2),
   scheduleCron: cronExpressionSchema.default('0 * * * *'),
-  config: sourceConfigSchema.default({}),
-  limits: sourceLimitsSchema.default({}),
+  config: sourceConfigSchema.prefault({}),
+  limits: sourceLimitsSchema.prefault({}),
   /**
    * Names of environment variables this source needs (e.g. ADZUNA_APP_KEY).
    * Only names are persisted — never values. A source whose credentials are

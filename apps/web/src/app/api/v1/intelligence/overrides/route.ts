@@ -23,7 +23,7 @@ const overrideSchema = z.object({
     .min(1)
     .max(200)
     .regex(/^[A-Za-z0-9_-]+(\.[A-Za-z0-9_-]+)*$/, 'Path must be dotted identifiers'),
-  value: z.unknown(),
+  value: z.unknown().optional(),
   previousValue: z.unknown().optional(),
   note: z.string().trim().max(400).nullable().default(null),
 });

@@ -834,7 +834,7 @@ export const applicationAnalyticsSchema = z.object({
       z.string(),
       z.array(z.object({ key: z.string().max(200), rates: funnelRatesSchema })),
     )
-    .default({}),
+    .prefault({}),
   computedAt: z.coerce.date().default(() => new Date()),
 });
 export type ApplicationAnalytics = z.infer<typeof applicationAnalyticsSchema>;
@@ -911,7 +911,7 @@ export const applicationPolicySchema = z.object({
       timing: z.number().min(0).max(100).default(5),
       friction: z.number().min(0).max(100).default(3),
     })
-    .default({}),
+    .prefault({}),
   algorithmVersion: z.string().max(20).default(APPLICATION_ALGORITHM_VERSION),
 });
 export type ApplicationPolicy = z.infer<typeof applicationPolicySchema>;

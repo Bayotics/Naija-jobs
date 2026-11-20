@@ -80,8 +80,8 @@ export const normalizedJobSchema = z.object({
   skills: z.array(z.string().trim().min(1).max(120)).default([]),
   techStack: z.array(z.string().trim().min(1).max(120)).default([]),
 
-  salary: salarySchema.default({}),
-  location: jobLocationSchema.default({}),
+  salary: salarySchema.prefault({}),
+  location: jobLocationSchema.prefault({}),
 
   remoteType: z.enum(REMOTE_TYPES).default('unknown'),
   employmentTypes: z.array(z.enum(EMPLOYMENT_TYPES)).default([]),
@@ -116,7 +116,7 @@ export const rawPostingSchema = z.object({
   sourceId: z.string().min(1),
   externalId: z.string().max(500).nullable().default(null),
   sourceUrl: z.string().trim().url().nullable().default(null),
-  payload: z.unknown(),
+  payload: z.unknown().optional(),
   payloadFormat: z.enum(['json', 'html', 'rss', 'email_mime', 'text']),
   fetchedAt: z.date().default(() => new Date()),
 });

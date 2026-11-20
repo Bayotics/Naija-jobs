@@ -33,7 +33,7 @@ function base(overrides: Partial<EnrichmentInput> & { jobId: string; title: stri
 
 /** 1. A well-formed posting with every section present. */
 export const normalJob = base({
-  jobId: '00000000-0000-0000-0000-000000000001',
+  jobId: '00000000-0000-4000-8000-000000000001',
   title: 'Senior Frontend Engineer',
   companyName: 'Acme Corp',
   companyWebsite: 'https://acme.example.com',
@@ -66,7 +66,7 @@ Benefits
 
 /** 2. Almost no content. */
 export const veryShortJob = base({
-  jobId: '00000000-0000-0000-0000-000000000002',
+  jobId: '00000000-0000-4000-8000-000000000002',
   title: 'Developer',
   companyName: 'Startup',
   sourceUrl: 'https://example.com/jobs/2',
@@ -75,7 +75,7 @@ export const veryShortJob = base({
 
 /** 3. Long, boilerplate-heavy, with site furniture to be cleaned. */
 export const longJob = base({
-  jobId: '00000000-0000-0000-0000-000000000003',
+  jobId: '00000000-0000-4000-8000-000000000003',
   title: 'Staff Backend Engineer, Payments',
   companyName: 'FinCo',
   sourceUrl: 'https://jobs.lever.co/finco/abc-def',
@@ -115,7 +115,7 @@ Privacy policy`,
 
 /** 4. Remote, unrestricted. */
 export const remoteWorldwideJob = base({
-  jobId: '00000000-0000-0000-0000-000000000004',
+  jobId: '00000000-0000-4000-8000-000000000004',
   title: 'Backend Engineer',
   companyName: 'Distributed Inc',
   sourceUrl: 'https://example.com/jobs/4',
@@ -126,7 +126,7 @@ export const remoteWorldwideJob = base({
 
 /** 5. Hybrid with a stated office cadence. */
 export const hybridJob = base({
-  jobId: '00000000-0000-0000-0000-000000000005',
+  jobId: '00000000-0000-4000-8000-000000000005',
   title: 'Data Engineer',
   companyName: 'DataCo',
   sourceUrl: 'https://example.com/jobs/5',
@@ -136,7 +136,7 @@ export const hybridJob = base({
 
 /** 6. Explicitly on-site. */
 export const onsiteJob = base({
-  jobId: '00000000-0000-0000-0000-000000000006',
+  jobId: '00000000-0000-4000-8000-000000000006',
   title: 'IT Support Technician',
   companyName: 'LocalBiz',
   sourceUrl: 'https://example.com/jobs/6',
@@ -146,7 +146,7 @@ export const onsiteJob = base({
 
 /** 7. Salary as a clean annual range. */
 export const salaryRangeJob = base({
-  jobId: '00000000-0000-0000-0000-000000000007',
+  jobId: '00000000-0000-4000-8000-000000000007',
   title: 'Software Engineer',
   companyName: 'PayCo',
   sourceUrl: 'https://example.com/jobs/7',
@@ -156,7 +156,7 @@ export const salaryRangeJob = base({
 
 /** 8. Compensation mentioned but never quantified. */
 export const salaryMissingJob = base({
-  jobId: '00000000-0000-0000-0000-000000000008',
+  jobId: '00000000-0000-4000-8000-000000000008',
   title: 'Product Manager',
   companyName: 'VagueCo',
   sourceUrl: 'https://example.com/jobs/8',
@@ -166,7 +166,7 @@ export const salaryMissingJob = base({
 /** 9. Several currencies and periods. */
 export const multiCurrencyJobs = [
   base({
-    jobId: '00000000-0000-0000-0000-000000000009',
+    jobId: '00000000-0000-4000-8000-000000000009',
     title: 'Contract Developer',
     companyName: 'UKCo',
     sourceUrl: 'https://example.com/jobs/9a',
@@ -174,7 +174,7 @@ export const multiCurrencyJobs = [
     description: 'Day rate of £500/day, outside IR35, 6 month contract.',
   }),
   base({
-    jobId: '00000000-0000-0000-0000-00000000000a',
+    jobId: '00000000-0000-4000-8000-00000000000a',
     title: 'Accountant',
     companyName: 'NaijaCo',
     sourceUrl: 'https://example.com/jobs/9b',
@@ -183,7 +183,7 @@ export const multiCurrencyJobs = [
     description: 'Salary: N300,000 monthly. Based in Lagos.',
   }),
   base({
-    jobId: '00000000-0000-0000-0000-00000000000b',
+    jobId: '00000000-0000-4000-8000-00000000000b',
     title: 'Engineer',
     companyName: 'EuroCo',
     sourceUrl: 'https://example.com/jobs/9c',
@@ -194,7 +194,7 @@ export const multiCurrencyJobs = [
 
 /** 10. Sponsorship explicitly offered. */
 export const visaOfferedJob = base({
-  jobId: '00000000-0000-0000-0000-00000000000c',
+  jobId: '00000000-0000-4000-8000-00000000000c',
   title: 'Machine Learning Engineer',
   companyName: 'GlobalAI',
   sourceUrl: 'https://example.com/jobs/10',
@@ -204,7 +204,7 @@ export const visaOfferedJob = base({
 
 /** 11. Sponsorship explicitly refused. */
 export const visaNotOfferedJob = base({
-  jobId: '00000000-0000-0000-0000-00000000000d',
+  jobId: '00000000-0000-4000-8000-00000000000d',
   title: 'Security Engineer',
   companyName: 'USDefense',
   sourceUrl: 'https://example.com/jobs/11',
@@ -214,7 +214,7 @@ export const visaNotOfferedJob = base({
 
 /** 12. Sponsorship never mentioned — the common case. */
 export const visaUnspecifiedJob = base({
-  jobId: '00000000-0000-0000-0000-00000000000e',
+  jobId: '00000000-0000-4000-8000-00000000000e',
   title: 'Frontend Developer',
   companyName: 'QuietCo',
   sourceUrl: 'https://example.com/jobs/12',
@@ -223,7 +223,7 @@ export const visaUnspecifiedJob = base({
 
 /** 13. Title says senior, body says one year. */
 export const conflictingSeniorityJob = base({
-  jobId: '00000000-0000-0000-0000-00000000000f',
+  jobId: '00000000-0000-4000-8000-00000000000f',
   title: 'Senior Software Engineer',
   companyName: 'ConfusedCo',
   sourceUrl: 'https://example.com/jobs/13',
@@ -232,7 +232,7 @@ export const conflictingSeniorityJob = base({
 
 /** 14. Several locations in one field. */
 export const multiLocationJob = base({
-  jobId: '00000000-0000-0000-0000-000000000010',
+  jobId: '00000000-0000-4000-8000-000000000010',
   title: 'Solutions Architect',
   companyName: 'MultiCo',
   sourceUrl: 'https://example.com/jobs/14',
@@ -243,7 +243,7 @@ export const multiLocationJob = base({
 
 /** 15. Advance-fee scam, the pattern common on open boards. */
 export const scamJob = base({
-  jobId: '00000000-0000-0000-0000-000000000011',
+  jobId: '00000000-0000-4000-8000-000000000011',
   title: 'URGENT!!! Work From Home Data Entry - Earn $5000 weekly',
   companyName: 'Quick Cash Ltd',
   sourceUrl: 'https://example.com/jobs/15',
@@ -258,12 +258,12 @@ Payment made in bitcoin only.`,
 /** 16. Byte-identical repost, for idempotence checks. */
 export const duplicateJob = base({
   ...normalJob,
-  jobId: '00000000-0000-0000-0000-000000000012',
+  jobId: '00000000-0000-4000-8000-000000000012',
 });
 
 /** 17. Board listing that links out to an ATS. */
 export const atsApplicationJob = base({
-  jobId: '00000000-0000-0000-0000-000000000013',
+  jobId: '00000000-0000-4000-8000-000000000013',
   title: 'Platform Engineer',
   companyName: 'Widgets Inc',
   companyWebsite: 'https://widgets.example.com',
@@ -274,7 +274,7 @@ export const atsApplicationJob = base({
 
 /** 18. Social post: no company field, informal prose. */
 export const socialPostJob = base({
-  jobId: '00000000-0000-0000-0000-000000000014',
+  jobId: '00000000-0000-4000-8000-000000000014',
   title: '[HIRING] Full Stack Dev for early stage startup',
   companyName: 'u/founder_guy',
   sourceUrl: 'https://www.reddit.com/r/forhire/comments/abc123/hiring_full_stack',
@@ -286,7 +286,7 @@ DM me if interested.`,
 
 /** 19. Nigerian board: employer in the title, no explicit country. */
 export const nigerianJob = base({
-  jobId: '00000000-0000-0000-0000-000000000015',
+  jobId: '00000000-0000-4000-8000-000000000015',
   title: 'Software Developer at Interswitch Group',
   companyName: 'Interswitch Group',
   sourceUrl: 'https://www.hotnigerianjobs.com/hotjobs/999/software-developer.html',
@@ -305,7 +305,7 @@ Interested candidates should send their CV to careers@interswitchng.com`,
 
 /** 20. International posting with a timezone constraint. */
 export const internationalJob = base({
-  jobId: '00000000-0000-0000-0000-000000000016',
+  jobId: '00000000-0000-4000-8000-000000000016',
   title: 'Site Reliability Engineer (m/w/d)',
   companyName: 'Zalando SE',
   sourceUrl: 'https://example.com/jobs/20',

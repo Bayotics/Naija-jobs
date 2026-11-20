@@ -70,7 +70,7 @@ const opsAudit = await import('../app/api/v1/ops/audit/route');
 const opsSession = await import('../app/api/v1/ops/session/route');
 const { createSession } = await import('@/lib/auth');
 
-const UNKNOWN_UUID = '11111111-1111-1111-1111-111111111111';
+const UNKNOWN_UUID = '11111111-1111-4111-8111-111111111111';
 
 function req(url: string, init?: RequestInit): Request {
   return new Request(`http://localhost${url}`, init);

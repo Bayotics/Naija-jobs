@@ -48,7 +48,7 @@ export const redditConfigSchema = z.object({
       clientId: z.string().default('REDDIT_CLIENT_ID'),
       clientSecret: z.string().default('REDDIT_CLIENT_SECRET'),
     })
-    .default({}),
+    .prefault({}),
 });
 
 export type RedditConfig = z.infer<typeof redditConfigSchema>;

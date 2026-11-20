@@ -29,7 +29,7 @@
     "@job-intel/db": "workspace:*",
     "@job-intel/observability": "workspace:*",
     "cron-parser": "^4.9.0",
-    "zod": "^3.25.76",
+    "zod": "^4.6.7",
     "@job-intel/enrichment": "workspace:*",
     "@job-intel/candidate": "workspace:*",
     "@job-intel/matching": "workspace:*",

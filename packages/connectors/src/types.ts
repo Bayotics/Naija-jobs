@@ -146,8 +146,11 @@ export interface Connector<TConfig = unknown> {
    * The input type is `unknown` rather than `TConfig`: a schema with defaults
    * accepts a *partial* object and produces a complete one, so tying input to
    * output would reject every connector that has a default.
+   *
+   * Zod 4 reordered these parameters to `<Output, Input>` and dropped the
+   * separate def slot, so the pair below says exactly what the three used to.
    */
-  readonly configSchema: z.ZodType<TConfig, z.ZodTypeDef, unknown>;
+  readonly configSchema: z.ZodType<TConfig, unknown>;
 
   /** Cheap, side-effect-free check of whether this source can run. */
   availability(ctx: ConnectorAvailabilityContext<TConfig>): ConnectorAvailability;

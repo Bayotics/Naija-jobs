@@ -747,8 +747,8 @@ export const fieldOverrideSchema = z.object({
   candidateId: z.string().uuid(),
   /** Dotted path into the intelligence profile. */
   path: z.string().max(200),
-  value: z.unknown(),
-  previousValue: z.unknown(),
+  value: z.unknown().optional(),
+  previousValue: z.unknown().optional(),
   origin: z.enum(FIELD_ORIGIN_KINDS).default('user_verified'),
   note: z.string().max(400).nullable().default(null),
   createdAt: z.coerce.date().default(() => new Date()),
@@ -813,8 +813,8 @@ export const candidateIntelligenceSchema = z.object({
   achievements: z.array(achievementRecordSchema).max(60).default([]),
   languages: z.array(languageRecordSchema).max(20).default([]),
 
-  seniority: seniorityEstimateSchema.default({}),
-  trajectory: careerTrajectorySchema.default({}),
+  seniority: seniorityEstimateSchema.prefault({}),
+  trajectory: careerTrajectorySchema.prefault({}),
   quality: profileQualitySchema.nullable().default(null),
 
   /** Documents that contributed. */

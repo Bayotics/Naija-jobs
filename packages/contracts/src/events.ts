@@ -122,6 +122,6 @@ export const systemEventSchema = z.object({
   sourceId: z.string().max(100).nullable().default(null),
   jobId: z.string().uuid().nullable().default(null),
   runId: z.string().uuid().nullable().default(null),
-  data: z.record(z.string(), z.unknown()).default({}),
+  data: z.record(z.string(), z.unknown()).prefault({}),
 });
 export type SystemEventInput = z.infer<typeof systemEventSchema>;

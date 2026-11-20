@@ -388,7 +388,7 @@ export const searchProfileSchema = z.object({
   excludedLocations: z.array(locationSpecSchema).max(60).default([]),
   locationStrictness: z.enum(LOCATION_STRICTNESS).default('preferred'),
   remotePreference: z.enum(REMOTE_PREFERENCES).default('ANY'),
-  remoteScope: remoteScopeSchema.default({}),
+  remoteScope: remoteScopeSchema.prefault({}),
 
   employmentTypes: z.array(z.enum(EMPLOYMENT_TYPES)).max(10).default([]),
   seniorityLevels: z.array(z.enum(SENIORITY_LEVELS)).max(12).default([]),
@@ -396,16 +396,16 @@ export const searchProfileSchema = z.object({
   minimumExperienceYears: z.number().min(0).max(60).nullable().default(null),
   maximumExperienceYears: z.number().min(0).max(60).nullable().default(null),
 
-  salary: salaryConfigSchema.default({}),
+  salary: salaryConfigSchema.prefault({}),
 
   skills: z.array(skillRequirementSchema).max(80).default([]),
   excludedSkills: z.array(z.string().trim().max(80)).max(40).default([]),
   skillStrictness: z.enum(SKILL_STRICTNESS).default('near_hard'),
-  keywords: keywordRulesSchema.default({}),
+  keywords: keywordRulesSchema.prefault({}),
 
-  companies: companyRulesSchema.default({}),
-  industries: industryRulesSchema.default({}),
-  visa: visaConfigSchema.default({}),
+  companies: companyRulesSchema.prefault({}),
+  industries: industryRulesSchema.prefault({}),
+  visa: visaConfigSchema.prefault({}),
   languages: z.array(languageRequirementSchema).max(20).default([]),
 
   sources: z.array(sourceSelectionSchema).max(200).default([]),
@@ -421,7 +421,7 @@ export const searchProfileSchema = z.object({
       instantThreshold: z.number().min(0).max(100).nullable().default(null),
       digestOnly: z.boolean().default(false),
     })
-    .default({}),
+    .prefault({}),
 
   createdAt: z.coerce.date().default(() => new Date()),
   updatedAt: z.coerce.date().default(() => new Date()),
@@ -445,8 +445,8 @@ export const searchOverrideSchema = z.object({
 
   /** Dot path into the profile, e.g. `remotePreference` or `salary.minimum`. */
   field: z.string().trim().min(1).max(120),
-  oldValue: z.unknown(),
-  newValue: z.unknown(),
+  oldValue: z.unknown().optional(),
+  newValue: z.unknown().optional(),
 
   startTime: z.coerce.date(),
   endTime: z.coerce.date(),
@@ -486,8 +486,8 @@ export type ChangeAction = (typeof CHANGE_ACTIONS)[number];
 export const configChangeSchema = z.object({
   field: z.string().trim().min(1).max(120),
   action: z.enum(CHANGE_ACTIONS).default('set'),
-  from: z.unknown(),
-  to: z.unknown(),
+  from: z.unknown().optional(),
+  to: z.unknown().optional(),
   /** Plain language, shown in the preview the user confirms. */
   summary: z.string().trim().min(1).max(300),
   confidence: z.number().min(0).max(1).default(0.5),
@@ -619,7 +619,7 @@ export const configHistoryEntrySchema = z.object({
   operation: z.enum(CONFIG_OPERATIONS),
   changes: z.array(configChangeSchema).max(30).default([]),
   /** The whole profile before the change, so undo is a restore. */
-  snapshotBefore: z.unknown(),
+  snapshotBefore: z.unknown().optional(),
   source: z.enum(CHANGE_SOURCES),
   actor: z.string().max(120).default('user'),
   reason: z.string().max(400).nullable().default(null),

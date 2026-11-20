@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic';
  * indexed column. Nothing here becomes a SQL fragment, so a caller cannot widen
  * the query past what the repository intends to expose.
  */
-const csv = <S extends z.ZodTypeAny>(schema: S) =>
+const csv = <S extends z.ZodType<unknown, string[]>>(schema: S) =>
   z
     .string()
     .optional()

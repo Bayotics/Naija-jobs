@@ -24,7 +24,7 @@ export const appConfigSchema = z.object({
       maxJobAgeDays: z.number().int().min(1).max(365).default(60),
       batchSize: z.number().int().min(1).max(1000).default(50),
     })
-    .default({}),
+    .prefault({}),
 
   matching: z
     .object({
@@ -36,7 +36,7 @@ export const appConfigSchema = z.object({
       digestScore: z.number().min(0).max(100).default(65),
       minimumConfidence: z.number().min(0).max(1).default(0.4),
     })
-    .default({}),
+    .prefault({}),
 
   dedup: z
     .object({
@@ -45,7 +45,7 @@ export const appConfigSchema = z.object({
       /** Width of the posted-date blocking window, in days. */
       postedWindowDays: z.number().int().min(1).max(90).default(14),
     })
-    .default({}),
+    .prefault({}),
 
   validation: z
     .object({
@@ -54,7 +54,7 @@ export const appConfigSchema = z.object({
       /** Consecutive absences from a source listing before presuming closed. */
       expiryAbsenceRuns: z.number().int().min(1).max(20).default(3),
     })
-    .default({}),
+    .prefault({}),
 
   /*
    * Where the raw recommendation score range actually sits.
@@ -77,7 +77,7 @@ export const appConfigSchema = z.object({
       referenceLow: z.number().min(0).max(100).default(30),
       ceiling: z.number().min(0).max(100).default(98),
     })
-    .default({}),
+    .prefault({}),
 
   ai: z
     .object({
@@ -90,7 +90,7 @@ export const appConfigSchema = z.object({
       /** Flag a job when the LLM and the deterministic rules disagree this much. */
       scoreDivergenceThreshold: z.number().min(0).max(100).default(40),
     })
-    .default({}),
+    .prefault({}),
 
   retention: z
     .object({
@@ -111,7 +111,7 @@ export const appConfigSchema = z.object({
       sourceRunDays: z.number().int().min(1).max(3650).default(180),
       systemEventDays: z.number().int().min(1).max(3650).default(90),
     })
-    .default({}),
+    .prefault({}),
 });
 
 export type AppConfig = z.infer<typeof appConfigSchema>;

@@ -80,7 +80,6 @@ function stubConnector(options: { id?: string; drafts?: SourceJobDraft[]; throws
     capabilities: DEFAULT_CAPABILITIES,
     configSchema: z.object({}).passthrough() as unknown as z.ZodType<
       Record<string, never>,
-      z.ZodTypeDef,
       unknown
     >,
     availability: () => ({ available: true, reason: null, requires: [] }),

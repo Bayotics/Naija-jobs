@@ -55,7 +55,7 @@ function stubConnector(options: {
     sourceType: 'job_api',
     accessTier: 'official_api',
     capabilities: DEFAULT_CAPABILITIES,
-    configSchema: z.object({}).passthrough() as unknown as z.ZodType<Record<string, never>, z.ZodTypeDef, unknown>,
+    configSchema: z.object({}).passthrough() as unknown as z.ZodType<Record<string, never>, unknown>,
     availability: () =>
       options.available === false
         ? { available: false, reason: 'stub unavailable', requires: ['STUB_KEY'] }

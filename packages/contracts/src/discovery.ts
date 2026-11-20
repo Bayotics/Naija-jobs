@@ -63,10 +63,10 @@ export const sourceJobDraftSchema = z.object({
    *
    * Nothing downstream of normalization may read this.
    */
-  raw: z.unknown(),
+  raw: z.unknown().optional(),
 
   /** Source-specific context worth surfacing (subreddit, feed category, …). */
-  sourceMetadata: z.record(z.string(), z.unknown()).default({}),
+  sourceMetadata: z.record(z.string(), z.unknown()).prefault({}),
 });
 
 export type SourceJobDraft = z.infer<typeof sourceJobDraftSchema>;

@@ -112,7 +112,7 @@ export const AUTHORITY_WEIGHTS: Readonly<Record<SourceAuthorityLevel, number>> =
 
 export const sourceAuthorityConfigSchema = z.object({
   /** Per-source override, checked first. Keyed by source id. */
-  bySourceId: z.record(z.string(), z.enum(SOURCE_AUTHORITY_LEVELS)).default({}),
+  bySourceId: z.record(z.string(), z.enum(SOURCE_AUTHORITY_LEVELS)).prefault({}),
   /** Fallback by source type. */
   bySourceType: z.record(z.string(), z.enum(SOURCE_AUTHORITY_LEVELS)).default({
     ats: 'authoritative',
@@ -470,7 +470,7 @@ export type RecommendationFactor = z.infer<typeof recommendationFactorSchema>;
  */
 export const recommendationScoreSchema = z.object({
   factors: z.array(recommendationFactorSchema).default([]),
-  weightsUsed: z.record(z.string(), z.number()).default({}),
+  weightsUsed: z.record(z.string(), z.number()).prefault({}),
   rawScore: z.number().min(0).max(100),
   calibratedScore: z.number().min(0).max(100),
   diversityPenalty: z.number().min(0).max(100).default(0),
@@ -563,7 +563,7 @@ export const dedupConfigSchema = z.object({
       probable: z.number().min(0).max(1).default(0.7),
       weak: z.number().min(0).max(1).default(0.45),
     })
-    .default({}),
+    .prefault({}),
 });
 export type DedupConfig = z.infer<typeof dedupConfigSchema>;
 
@@ -675,14 +675,14 @@ export const notificationPolicySchema = z.object({
 export type NotificationPolicy = z.infer<typeof notificationPolicySchema>;
 
 export const recommendationConfigSchema = z.object({
-  dedup: dedupConfigSchema.default({}),
-  authority: sourceAuthorityConfigSchema.default({}),
-  freshness: freshnessConfigSchema.default({}),
-  verification: verificationConfigSchema.default({}),
-  weights: recommendationWeightsSchema.default({}),
-  diversification: diversificationConfigSchema.default({}),
-  thresholds: recommendationThresholdConfigSchema.default({}),
-  notification: notificationPolicySchema.default({}),
+  dedup: dedupConfigSchema.prefault({}),
+  authority: sourceAuthorityConfigSchema.prefault({}),
+  freshness: freshnessConfigSchema.prefault({}),
+  verification: verificationConfigSchema.prefault({}),
+  weights: recommendationWeightsSchema.prefault({}),
+  diversification: diversificationConfigSchema.prefault({}),
+  thresholds: recommendationThresholdConfigSchema.prefault({}),
+  notification: notificationPolicySchema.prefault({}),
   /** Stretch the score distribution so the top of the range means something. */
   calibration: z
     .object({
@@ -694,7 +694,7 @@ export const recommendationConfigSchema = z.object({
       /** Ceiling after calibration; leaves headroom above the top tier. */
       ceiling: z.number().min(0).max(100).default(98),
     })
-    .default({}),
+    .prefault({}),
 });
 export type RecommendationConfig = z.infer<typeof recommendationConfigSchema>;
 

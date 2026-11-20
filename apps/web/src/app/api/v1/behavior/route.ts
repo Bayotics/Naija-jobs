@@ -41,7 +41,7 @@ const eventSchema = z.object({
    */
   metadata: z
     .record(z.string().max(40), z.union([z.string().max(200), z.number(), z.boolean()]))
-    .default({}),
+    .prefault({}),
 });
 
 const batchSchema = z.object({ events: z.array(eventSchema).min(1).max(50) });

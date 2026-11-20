@@ -325,7 +325,7 @@ export const taskSchema = z.object({
    */
   idempotencyKey: z.string().min(1).max(300),
 
-  payload: z.record(z.string(), z.unknown()).default({}),
+  payload: z.record(z.string(), z.unknown()).prefault({}),
 
   /** Denormalised for fair scheduling, filtering and the dashboard. */
   profileId: z.string().uuid().nullable().default(null),
@@ -475,7 +475,7 @@ export const scheduleEntrySchema = z.object({
   lastFailureAt: z.coerce.date().nullable().default(null),
 
   pausedUntil: z.coerce.date().nullable().default(null),
-  payload: z.record(z.string(), z.unknown()).default({}),
+  payload: z.record(z.string(), z.unknown()).prefault({}),
 });
 
 export type ScheduleEntry = z.infer<typeof scheduleEntrySchema>;
@@ -571,7 +571,7 @@ export const concurrencyLimitsSchema = z.object({
   perSource: z.number().int().min(1).max(100).default(4),
   perDomain: z.number().int().min(1).max(100).default(4),
   perProfile: z.number().int().min(1).max(100).default(8),
-  perType: z.record(z.string(), z.number().int().min(1).max(500)).default({}),
+  perType: z.record(z.string(), z.number().int().min(1).max(500)).prefault({}),
 });
 
 export type ConcurrencyLimits = z.infer<typeof concurrencyLimitsSchema>;

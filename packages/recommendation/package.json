@@ -16,6 +16,6 @@
     "@job-intel/core": "workspace:*",
     "@job-intel/enrichment": "workspace:*",
     "@job-intel/observability": "workspace:*",
-    "zod": "^3.25.76"
+    "zod": "^4.6.7"
   }
 }

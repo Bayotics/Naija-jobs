@@ -71,7 +71,6 @@ function stubConnector(id: string, drafts: SourceJobDraft[]): Connector<Record<s
     capabilities: { ...DEFAULT_CAPABILITIES, supportsIncremental: true },
     configSchema: z.object({}).passthrough() as unknown as z.ZodType<
       Record<string, never>,
-      z.ZodTypeDef,
       unknown
     >,
     availability: () => ({ available: true, reason: null, requires: [] }),

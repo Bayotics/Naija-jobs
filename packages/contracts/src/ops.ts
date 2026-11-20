@@ -196,8 +196,8 @@ export const aiCostSummarySchema = z.object({
   totalInputTokens: z.number().int().min(0),
   totalOutputTokens: z.number().int().min(0),
   totalCostUsd: z.number().min(0),
-  byOperation: z.record(z.string(), z.number()).default({}),
-  byModel: z.record(z.string(), z.number()).default({}),
+  byOperation: z.record(z.string(), z.number()).prefault({}),
+  byModel: z.record(z.string(), z.number()).prefault({}),
   byDay: z.array(z.object({ day: z.string().max(10), costUsd: z.number() })).default([]),
   /** Configured ceiling, so the dashboard can show headroom rather than a bare figure. */
   dailyBudgetUsd: z.number().min(0).nullable().default(null),

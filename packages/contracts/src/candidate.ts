@@ -262,8 +262,8 @@ export const candidatePreferencesSchema = z.object({
   /** Maximum in-office days the candidate will accept, when hybrid. */
   maxOfficeDaysPerWeek: z.number().int().min(0).max(7).nullable().default(null),
 
-  salary: salaryPreferenceSchema.default({}),
-  workAuthorization: workAuthorizationPreferenceSchema.default({}),
+  salary: salaryPreferenceSchema.prefault({}),
+  workAuthorization: workAuthorizationPreferenceSchema.prefault({}),
 
   employmentTypes: z.array(weightedPreferenceSchema).default([]),
   industries: z.array(weightedPreferenceSchema).default([]),
@@ -273,7 +273,7 @@ export const candidatePreferencesSchema = z.object({
   technologies: z.array(weightedPreferenceSchema).default([]),
   seniorityLevels: z.array(z.enum(SENIORITY_LEVELS)).default([]),
 
-  weights: matchingWeightsSchema.default({}),
+  weights: matchingWeightsSchema.prefault({}),
 
   /**
    * Free-form keyword exclusions applied to title and description.
@@ -282,7 +282,7 @@ export const candidatePreferencesSchema = z.object({
   excludedKeywords: z.array(z.string().trim().min(1).max(120)).default([]),
 
   /** Preferences the schema does not model yet, preserved verbatim. */
-  custom: z.record(z.string(), z.unknown()).default({}),
+  custom: z.record(z.string(), z.unknown()).prefault({}),
 });
 export type CandidatePreferences = z.infer<typeof candidatePreferencesSchema>;
 
@@ -356,7 +356,7 @@ export const behavioralSignalSchema = z.object({
   jobId: z.string().uuid(),
   event: z.enum(BEHAVIORAL_EVENTS),
   /** Optional structured context, e.g. which list the click came from. */
-  context: z.record(z.string(), z.unknown()).default({}),
+  context: z.record(z.string(), z.unknown()).prefault({}),
 });
 /**
  * The *input* type, not `z.infer`.
@@ -404,7 +404,7 @@ export const preferenceProposalSchema = z.object({
   /** Dot path into the preference payload, e.g. "workArrangement". */
   path: z.string().min(1).max(120),
   operation: z.enum(['set', 'add', 'remove', 'update_strength']),
-  value: z.unknown(),
+  value: z.unknown().optional(),
   /** Restated in plain language for the confirmation dialog. */
   summary: z.string().min(1).max(300),
   confidence: z.number().min(0).max(1),

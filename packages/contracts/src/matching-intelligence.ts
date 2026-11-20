@@ -872,7 +872,7 @@ export const jobMatchResultSchema = z.object({
   applicationFrictionScore: z.number().min(0).max(100).nullable().default(null),
   recommendation: z.enum(APPLICATION_RECOMMENDATIONS),
 
-  coverage: requirementCoverageSchema.default({}),
+  coverage: requirementCoverageSchema.prefault({}),
   matchedRequirements: z.array(z.string().max(200)).max(60).default([]),
   partialMatches: z.array(z.string().max(200)).max(60).default([]),
   missingRequirements: z.array(z.string().max(200)).max(60).default([]),

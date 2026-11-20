@@ -599,7 +599,7 @@ export const sourceDetectionResultSchema = z.object({
   robotsDetail: z.string().max(400).nullable().default(null),
   signals: z.array(detectionSignalSchema).default([]),
   recommendedConnectorId: z.string().max(100).nullable().default(null),
-  recommendedConfig: z.record(z.string(), z.unknown()).default({}),
+  recommendedConfig: z.record(z.string(), z.unknown()).prefault({}),
   /** Plain-language explanation, shown verbatim in the UI. */
   recommendation: z.string().max(600).default(''),
   /** Present when the URL cannot be used at all. */
@@ -674,10 +674,10 @@ export type ContentClassification = z.infer<typeof contentClassificationSchema>;
 // ── Framework configuration ─────────────────────────────────────────────────
 
 export const discoveryFrameworkConfigSchema = z.object({
-  confidence: discoveryConfidenceConfigSchema.default({}),
-  queryPlan: queryPlanConfigSchema.default({}),
-  budget: discoveryBudgetSchema.default({}),
-  scheduling: schedulingPolicySchema.default({}),
+  confidence: discoveryConfidenceConfigSchema.prefault({}),
+  queryPlan: queryPlanConfigSchema.prefault({}),
+  budget: discoveryBudgetSchema.prefault({}),
+  scheduling: schedulingPolicySchema.prefault({}),
   /** Hosts the generic web crawler may never visit, beyond the SSRF guard. */
   blockedHosts: z.array(z.string().max(200)).default([]),
   /** Maximum pages one generic-web source may fetch in a single run. */

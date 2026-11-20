@@ -8,7 +8,7 @@ import { handler, parseQuery } from '@/lib/api';
 
 export const dynamic = 'force-dynamic';
 
-const csv = <S extends z.ZodTypeAny>(schema: S) =>
+const csv = <S extends z.ZodType<unknown, string[]>>(schema: S) =>
   z
     .string()
     .optional()

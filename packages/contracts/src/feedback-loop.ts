@@ -213,7 +213,7 @@ export const behaviorEventSchema = z.object({
   experimentId: z.string().max(80).nullable().default(null),
   variant: z.string().max(40).nullable().default(null),
   /** Bounded, non-identifying extras. */
-  metadata: z.record(z.string(), z.union([z.string().max(200), z.number(), z.boolean()])).default({}),
+  metadata: z.record(z.string(), z.union([z.string().max(200), z.number(), z.boolean()])).prefault({}),
 });
 export type BehaviorEvent = z.infer<typeof behaviorEventSchema>;
 export type BehaviorEventInput = z.input<typeof behaviorEventSchema>;
@@ -398,8 +398,8 @@ export const learningConfigSchema = z.object({
    */
   frozen: z.boolean().default(false),
 
-  signalWeights: z.record(z.string(), signalWeightSchema).default({}),
-  contextWeights: z.record(z.string(), z.number().min(0).max(2)).default({}),
+  signalWeights: z.record(z.string(), signalWeightSchema).prefault({}),
+  contextWeights: z.record(z.string(), z.number().min(0).max(2)).prefault({}),
 
   /** Half-life in days for behavioural evidence. Explicit prefs never decay. */
   halfLifeDays: z.number().int().min(1).max(3_650).default(45),
@@ -495,8 +495,8 @@ export const preferenceSuggestionSchema = z.object({
   /** Dot path into the preference payload, as the preference engine expects. */
   path: z.string().max(120),
   operation: z.enum(['set', 'add', 'remove', 'update_strength']),
-  currentValue: z.unknown(),
-  suggestedValue: z.unknown(),
+  currentValue: z.unknown().optional(),
+  suggestedValue: z.unknown().optional(),
   /** Shown verbatim. Must state the evidence, not just the conclusion. */
   message: z.string().max(500),
   /** The counts behind it, so the candidate can judge for themselves. */
@@ -646,7 +646,7 @@ export const experimentSchema = z.object({
         key: z.string().max(40),
         description: z.string().max(300).default(''),
         /** Config overlaid on the learning config for this variant. */
-        config: z.record(z.string(), z.unknown()).default({}),
+        config: z.record(z.string(), z.unknown()).prefault({}),
         /** 0–1; must sum to 1 across variants. */
         allocation: z.number().min(0).max(1),
       }),

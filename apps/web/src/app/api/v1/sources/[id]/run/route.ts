@@ -16,7 +16,7 @@ const bodySchema = z
     /** Returns immediately with a run id instead of waiting. */
     async: z.boolean().default(false),
   })
-  .default({});
+  .prefault({});
 
 /**
  * Manually triggers one source (Part 17).

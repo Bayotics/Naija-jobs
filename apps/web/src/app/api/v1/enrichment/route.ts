@@ -24,7 +24,7 @@ const runSchema = z
       })
       .optional(),
   })
-  .default({});
+  .prefault({});
 
 /** Enrichment status and throughput (Part 24). */
 export function GET() {

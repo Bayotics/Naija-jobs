@@ -766,16 +766,16 @@ export const sourceRegistryEntrySchema = z.object({
   connectorId: z.string().trim().min(1).max(120),
   enabled: z.boolean().default(true),
 
-  capabilities: sourceCapabilitiesSchema.default({}),
-  auth: authRequirementSchema.default({}),
-  accessPolicy: accessPolicySchema.default({}),
-  rateLimit: rateLimitPolicySchema.default({}),
-  contentLimits: contentLimitsSchema.default({}),
+  capabilities: sourceCapabilitiesSchema.prefault({}),
+  auth: authRequirementSchema.prefault({}),
+  accessPolicy: accessPolicySchema.prefault({}),
+  rateLimit: rateLimitPolicySchema.prefault({}),
+  contentLimits: contentLimitsSchema.prefault({}),
 
   priority: z.enum(['very_high', 'high', 'medium', 'low']).default('medium'),
 
   /** Connector-specific configuration. Never contains secrets. */
-  config: z.record(z.string(), z.unknown()).default({}),
+  config: z.record(z.string(), z.unknown()).prefault({}),
 
   state: z.enum(ACQUISITION_SOURCE_STATES).default('NOT_CONFIGURED'),
   healthScore: z.number().min(0).max(100).default(0),
@@ -883,7 +883,7 @@ export const sourceQuerySchema = z.object({
   text: z.string().max(1_000),
 
   /** Structured parameters, for sources that take them instead of a string. */
-  parameters: z.record(z.string(), z.unknown()).default({}),
+  parameters: z.record(z.string(), z.unknown()).prefault({}),
 
   priority: z.enum(['high', 'medium', 'low']).default('medium'),
   /** Why this query exists, shown in the control centre. */

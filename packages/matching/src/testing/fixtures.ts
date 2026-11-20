@@ -197,7 +197,7 @@ export function makeCandidateContext(
   options: CandidateFixtureOptions = {},
 ): MatchCandidateContext {
   return {
-    profileId: '00000000-0000-0000-0000-0000000000c0',
+    profileId: '00000000-0000-4000-8000-0000000000c0',
     profileVersion: options.profileVersion ?? 1,
     preferenceVersion: options.preferenceVersion ?? 1,
     profile: candidateProfilePayloadSchema.parse({
@@ -223,7 +223,7 @@ export interface JobFixtureOptions {
 
 export function makeJobContext(options: JobFixtureOptions = {}): MatchJobContext {
   return {
-    jobId: options.jobId ?? '00000000-0000-0000-0000-0000000000a1',
+    jobId: options.jobId ?? '00000000-0000-4000-8000-0000000000a1',
     jobVersion: 1,
     title: options.title ?? 'Software Engineer',
     companyName: options.companyName ?? 'Example Co',
