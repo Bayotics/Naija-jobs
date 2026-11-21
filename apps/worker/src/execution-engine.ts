@@ -303,6 +303,30 @@ export function createExecutionEngine(options: EngineOptions): ExecutionEngine {
  * This engine owns *scheduling* — deciding what is due and making sure it
  * happens — and hands the actual stage work to the services that own it.
  */
+/**
+ * The sources a profile scan still has to cover itself.
+ *
+ * A source with its own SOURCE_SCAN schedule is already being scanned on its
+ * own cadence, and enqueueing it here as well is a second fetch of the same
+ * postings. Disabled schedules count as covered: a schedule that exists and is
+ * switched off is a decision not to scan, not a gap to fill.
+ *
+ * Pure, and exported, because the rule is worth testing without standing up a
+ * worker, a queue and a database to ask it one question.
+ */
+export function sourcesNeedingFanOut<TSource extends { id: string }>(
+  sources: readonly TSource[],
+  schedules: ReadonlyArray<{ taskType: string; sourceId: string | null }>,
+): TSource[] {
+  const covered = new Set(
+    schedules
+      .filter((entry) => entry.taskType === 'SOURCE_SCAN' && entry.sourceId !== null)
+      .map((entry) => entry.sourceId as string),
+  );
+
+  return sources.filter((source) => !covered.has(source.id));
+}
+
 function registerHandlers(
   worker: Worker,
   deps: {
@@ -498,55 +522,55 @@ function registerHandlers(
     const sources = await new SourceRepository(deps.db).list({ enabledOnly: true });
 
     /*
-     * The key has to be the one the scheduler would build for the same scan.
+     * Only the sources that no schedule covers.
      *
-     * Every source here also has its own SOURCE_SCAN schedule, so both paths
-     * enqueue a scan of the same source in the same hour. They collapse into
-     * one task only if they agree on the key, and an hour-truncated timestamp
-     * does not agree with `scanWindow` — it differs by the two characters of
-     * ":00". That near-miss had every source fetched twice an hour, which is
-     * free nowhere and costs a daily quota at Jooble.
+     * A source with its own SOURCE_SCAN schedule is already being scanned on
+     * its own cadence. Enqueueing it here as well produced a second scan of
+     * every source every hour, and matching the scheduler's key was not enough
+     * to collapse them: `tasks_idempotency_live_unique` is a partial index
+     * covering only live statuses, so the moment the first scan reaches
+     * COMPLETED its key is free and the second insert succeeds. Scans ran
+     * seconds apart, which is exactly long enough to lose that race.
      *
-     * The interval is what makes the windows line up: a source scanned every
-     * two hours buckets differently from one scanned every hour, and taking
-     * the window from its own schedule is what keeps a source on the cadence
-     * it was configured with rather than the fan-out's.
+     * Relying on a race to suppress work we should not have asked for is the
+     * wrong shape. Not asking is the fix; the key alignment below is what
+     * catches the remaining overlap while reconciliation is still deriving a
+     * schedule for a newly added source.
      *
-     * Both sides go through `scanTaskKey` rather than each formatting a key
-     * of their own, because the last two characters of a timestamp are not
-     * something two call sites should be trusted to agree on forever.
+     * Disabled schedules count as covered. A schedule that exists and is off
+     * is a decision not to scan, and the fan-out must not quietly overrule it.
      */
-    const schedules = await deps.scheduler.listSchedules({ profileId, enabledOnly: true });
-    const scanSchedules = new Map(
-      schedules
-        .filter((entry) => entry.taskType === 'SOURCE_SCAN' && entry.sourceId !== null)
-        .map((entry) => [entry.sourceId as string, entry] as const),
-    );
+    const schedules = await deps.scheduler.listSchedules({ profileId });
+    const uncovered = sourcesNeedingFanOut(sources, schedules);
+    const covered = sources.length - uncovered.length;
+
+    if (uncovered.length === 0) {
+      ctx.logger.info('Profile scan had nothing to fan out to', {
+        profileId,
+        sources: sources.length,
+        covered,
+      });
+      return;
+    }
 
     const now = new Date();
     const enqueued = await deps.queue.enqueueMany(
-      sources.map((source) => {
-        const schedule = scanSchedules.get(source.id);
-        const intervalMinutes = schedule?.intervalMinutes ?? 60;
-
-        return {
-          type: 'SOURCE_SCAN' as const,
-          idempotencyKey: scanTaskKey('SOURCE_SCAN', profileId, source.id, now, intervalMinutes),
-          profileId,
-          sourceId: source.id,
-          payload: {
-            scheduledBy: task.taskId,
-            // Carried so that whichever path wins the race, the schedule still
-            // learns how its own run went.
-            ...(schedule ? { scheduleId: schedule.scheduleId } : {}),
-          },
-        };
-      }),
+      uncovered.map((source) => ({
+        type: 'SOURCE_SCAN' as const,
+        // The same key the scheduler will build once this source has one, so
+        // the first scheduled scan and this one collapse rather than double.
+        idempotencyKey: scanTaskKey('SOURCE_SCAN', profileId, source.id, now, 60),
+        profileId,
+        sourceId: source.id,
+        payload: { scheduledBy: task.taskId },
+      })),
     );
 
     ctx.logger.info('Profile scan fanned out', {
       profileId,
       sources: sources.length,
+      covered,
+      fannedOut: uncovered.length,
       created: enqueued.created.length,
       duplicates: enqueued.duplicates,
     });
